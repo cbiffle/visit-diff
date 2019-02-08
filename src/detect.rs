@@ -1,7 +1,7 @@
 use std::fmt::Debug;
-use void::{Void, ResultVoidExt};
+use void::{ResultVoidExt, Void};
 
-use crate::{Differ, Diff, StructDiffer, TupleDiffer, SeqDiffer, MapDiffer};
+use crate::{Diff, Differ, MapDiffer, SeqDiffer, StructDiffer, TupleDiffer};
 
 #[derive(Copy, Clone, Debug)]
 struct Detector;
@@ -25,9 +25,14 @@ impl Differ for Detector {
         Ok(false)
     }
 
-    fn diff_newtype<T: ?Sized>(self, _: &'static str, a: &T, b: &T)
-        -> Result<Self::Ok, Self::Err>
-    where T: Diff
+    fn diff_newtype<T: ?Sized>(
+        self,
+        _: &'static str,
+        a: &T,
+        b: &T,
+    ) -> Result<Self::Ok, Self::Err>
+    where
+        T: Diff,
     {
         Diff::diff(a, b, self)
     }
@@ -37,9 +42,11 @@ impl Differ for Detector {
         StructDetector(false)
     }
 
-    fn begin_struct_variant(self, _: &'static str, _: &'static str)
-        -> Self::StructVariantDiffer
-    {
+    fn begin_struct_variant(
+        self,
+        _: &'static str,
+        _: &'static str,
+    ) -> Self::StructVariantDiffer {
         StructDetector(false)
     }
 
@@ -47,9 +54,11 @@ impl Differ for Detector {
         TupleDetector(false)
     }
 
-    fn begin_tuple_variant(self, _: &'static str, _: &'static str)
-        -> Self::TupleVariantDiffer
-    {
+    fn begin_tuple_variant(
+        self,
+        _: &'static str,
+        _: &'static str,
+    ) -> Self::TupleVariantDiffer {
         TupleDetector(false)
     }
 
@@ -70,7 +79,8 @@ impl StructDiffer for StructDetector {
     type Err = Void;
 
     fn diff_field<T: ?Sized>(&mut self, _: &'static str, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if !self.0 {
             self.0 = Diff::diff(a, b, Detector).void_unwrap();
@@ -90,7 +100,8 @@ impl TupleDiffer for TupleDetector {
     type Err = Void;
 
     fn diff_field<T: ?Sized>(&mut self, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if !self.0 {
             self.0 = Diff::diff(a, b, Detector).void_unwrap();
@@ -110,7 +121,8 @@ impl SeqDiffer for SeqDetector {
     type Err = Void;
 
     fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if !self.0 {
             self.0 = Diff::diff(a, b, Detector).void_unwrap();
@@ -130,8 +142,9 @@ impl MapDiffer for MapDetector {
     type Err = Void;
 
     fn diff_entry<K, V>(&mut self, _: &K, a: &V, b: &V)
-    where K: ?Sized + Debug,
-          V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         if !self.0 {
             self.0 = Diff::diff(a, b, Detector).void_unwrap();
@@ -139,15 +152,17 @@ impl MapDiffer for MapDetector {
     }
 
     fn only_in_left<K, V>(&mut self, _: &K, _: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         self.0 = true
     }
 
     fn only_in_right<K, V>(&mut self, _: &K, _: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         self.0 = true
     }
@@ -160,46 +175,70 @@ impl MapDiffer for MapDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::tests::{TestStruct, TestEnum};
+    use crate::tests::{TestEnum, TestStruct};
     use void::ResultVoidExt;
 
     #[test]
     fn detector_self_false() {
-        let a = TestStruct { distance: 12, silly: false };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
         assert_eq!(Diff::diff(&a, &a, Detector).void_unwrap(), false)
     }
 
     #[test]
     fn detector_other_false() {
-        let a = TestStruct { distance: 12, silly: false };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
         assert_eq!(Diff::diff(&a, &a.clone(), Detector).void_unwrap(), false)
     }
 
     #[test]
     fn detector_first_field_true() {
-        let a = TestStruct { distance: 12, silly: false };
-        let b = TestStruct { distance: 10, silly: false };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
+        let b = TestStruct {
+            distance: 10,
+            silly: false,
+        };
         assert!(Diff::diff(&a, &b, Detector).void_unwrap())
     }
 
     #[test]
     fn detector_second_field_true() {
-        let a = TestStruct { distance: 12, silly: false };
-        let b = TestStruct { distance: 12, silly: true };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
+        let b = TestStruct {
+            distance: 12,
+            silly: true,
+        };
         assert!(Diff::diff(&a, &b, Detector).void_unwrap())
     }
 
     #[test]
     fn detector_enum() {
-        assert_eq!(Diff::diff(&TestEnum::First, &TestEnum::First, Detector)
-                   .void_unwrap(), false);
-        assert_eq!(Diff::diff(&TestEnum::Second, &TestEnum::Second, Detector)
-                   .void_unwrap(), false);
+        assert_eq!(
+            Diff::diff(&TestEnum::First, &TestEnum::First, Detector)
+                .void_unwrap(),
+            false
+        );
+        assert_eq!(
+            Diff::diff(&TestEnum::Second, &TestEnum::Second, Detector)
+                .void_unwrap(),
+            false
+        );
 
         assert!(Diff::diff(&TestEnum::First, &TestEnum::Second, Detector)
-                .void_unwrap());
+            .void_unwrap());
         assert!(Diff::diff(&TestEnum::Second, &TestEnum::First, Detector)
-                .void_unwrap());
+            .void_unwrap());
     }
 
     #[test]
@@ -212,6 +251,5 @@ mod tests {
         let b = TestEnum::Struct { a: 14, b: true };
 
         assert!(Diff::diff(&a, &b, Detector).void_unwrap());
-
     }
 }

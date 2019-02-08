@@ -5,7 +5,8 @@ use std::fmt::Debug;
 
 trait Diff: Debug {
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ;
+    where
+        D: Differ;
 }
 
 trait Differ {
@@ -29,23 +30,34 @@ trait Differ {
     fn same(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err>;
 
     /// Descend into a newtype.
-    fn diff_newtype<T: ?Sized>(self, ty: &'static str, a: &T, b: &T)
-        -> Result<Self::Ok, Self::Err>
-    where T: Diff;
+    fn diff_newtype<T: ?Sized>(
+        self,
+        ty: &'static str,
+        a: &T,
+        b: &T,
+    ) -> Result<Self::Ok, Self::Err>
+    where
+        T: Diff;
 
     /// Begin traversing a struct.
     fn begin_struct(self, ty: &'static str) -> Self::StructDiffer;
 
     /// Begin traversing a struct variant.
-    fn begin_struct_variant(self, ty: &'static str, var: &'static str)
-        -> Self::StructVariantDiffer;
+    fn begin_struct_variant(
+        self,
+        ty: &'static str,
+        var: &'static str,
+    ) -> Self::StructVariantDiffer;
 
     /// Begin traversing a tuple struct.
     fn begin_tuple(self, ty: &'static str) -> Self::TupleDiffer;
 
     /// Begin traversing a tuple variant.
-    fn begin_tuple_variant(self, ty: &'static str, var: &'static str)
-        -> Self::TupleVariantDiffer;
+    fn begin_tuple_variant(
+        self,
+        ty: &'static str,
+        var: &'static str,
+    ) -> Self::TupleVariantDiffer;
 
     /// Begin traversing a sequence.
     fn begin_seq(self) -> Self::SeqDiffer;
@@ -64,7 +76,8 @@ trait StructDiffer {
     type Err;
 
     fn diff_field<T: ?Sized>(&mut self, name: &'static str, a: &T, b: &T)
-    where T: Diff;
+    where
+        T: Diff;
 
     fn skip_field<T: ?Sized>(&mut self, _name: &'static str) {}
 
@@ -76,7 +89,8 @@ trait TupleDiffer {
     type Err;
 
     fn diff_field<T: ?Sized>(&mut self, a: &T, b: &T)
-    where T: Diff;
+    where
+        T: Diff;
 
     fn skip_field<T: ?Sized>(&mut self) {}
 
@@ -87,11 +101,14 @@ trait SeqDiffer {
     type Ok;
     type Err;
 
-    fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T) where T: Diff;
+    fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T)
+    where
+        T: Diff;
 
     fn diff_elements<T, I>(&mut self, a: I, b: I)
-        where T: Diff,
-              I: IntoIterator<Item = T>
+    where
+        T: Diff,
+        I: IntoIterator<Item = T>,
     {
         for (a, b) in a.into_iter().zip(b.into_iter()) {
             self.diff_element(&a, &b);
@@ -105,20 +122,20 @@ trait MapDiffer {
     type Ok;
     type Err;
 
-    fn diff_entry<K, V>(&mut self,
-                        key: &K,
-                        a: &V,
-                        b: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff;
+    fn diff_entry<K, V>(&mut self, key: &K, a: &V, b: &V)
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff;
 
     fn only_in_left<K, V>(&mut self, key: &K, a: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff;
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff;
 
     fn only_in_right<K, V>(&mut self, key: &K, b: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff;
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff;
 
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
@@ -127,10 +144,12 @@ trait MapDiffer {
 // Impls
 
 impl<T> Diff for &T
-    where T: Diff
+where
+    T: Diff,
 {
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+    where
+        D: Differ,
     {
         Diff::diff(*a, *b, out)
     }
@@ -138,7 +157,8 @@ impl<T> Diff for &T
 
 impl Diff for bool {
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+    where
+        D: Differ,
     {
         if a != b {
             out.difference(a, b)
@@ -150,7 +170,8 @@ impl Diff for bool {
 
 impl Diff for usize {
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+    where
+        D: Differ,
     {
         if a != b {
             out.difference(a, b)
@@ -161,11 +182,13 @@ impl Diff for usize {
 }
 
 impl<K, V> Diff for std::collections::BTreeMap<K, V>
-    where K: Ord + Debug,
-          V: Diff,
+where
+    K: Ord + Debug,
+    V: Diff,
 {
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+    where
+        D: Differ,
     {
         use std::cmp::Ordering;
 
@@ -203,7 +226,6 @@ impl<K, V> Diff for std::collections::BTreeMap<K, V>
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -217,17 +239,21 @@ mod tests {
 
     impl Diff for TestEnum {
         fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+        where
+            D: Differ,
         {
             match (a, b) {
                 (TestEnum::First, TestEnum::First) => out.same(a, b),
                 (TestEnum::Second, TestEnum::Second) => out.same(a, b),
-                (TestEnum::Struct { a: aa, b: ab }, TestEnum::Struct { a: ba, b: bb }) => {
+                (
+                    TestEnum::Struct { a: aa, b: ab },
+                    TestEnum::Struct { a: ba, b: bb },
+                ) => {
                     let mut s = out.begin_struct_variant("TestEnum", "Struct");
                     s.diff_field("a", &aa, &ba);
                     s.diff_field("b", &ab, &bb);
                     s.end()
-                },
+                }
                 _ => out.difference(a, b),
             }
         }
@@ -241,7 +267,8 @@ mod tests {
 
     impl Diff for TestStruct {
         fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
-        where D: Differ,
+        where
+            D: Differ,
         {
             let mut s = out.begin_struct("TestStruct");
             s.diff_field("distance", &a.distance, &b.distance);

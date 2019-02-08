@@ -1,5 +1,5 @@
+use crate::{Diff, Differ, MapDiffer, SeqDiffer, StructDiffer, TupleDiffer};
 use std::fmt::Debug;
-use crate::{Diff, Differ, StructDiffer, TupleDiffer, SeqDiffer, MapDiffer};
 
 struct DebugDiff<'a, 'b: 'a>(&'a mut std::fmt::Formatter<'b>);
 
@@ -15,7 +15,8 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
     type MapDiffer = DebugMapDiff<'a, 'b>;
 
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err> {
-        self.0.debug_struct("DIFF")
+        self.0
+            .debug_struct("DIFF")
             .field("L", a)
             .field("R", b)
             .finish()
@@ -25,9 +26,14 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
         a.fmt(self.0)
     }
 
-    fn diff_newtype<T: ?Sized>(self, _: &'static str, a: &T, b: &T)
-        -> Result<Self::Ok, Self::Err>
-    where T: Diff
+    fn diff_newtype<T: ?Sized>(
+        self,
+        _: &'static str,
+        a: &T,
+        b: &T,
+    ) -> Result<Self::Ok, Self::Err>
+    where
+        T: Diff,
     {
         Diff::diff(a, b, self)
     }
@@ -36,9 +42,11 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
         DebugStructDiff(Ok(self.0.debug_struct(name)))
     }
 
-    fn begin_struct_variant(self, _: &'static str, v: &'static str)
-        -> Self::StructVariantDiffer
-    {
+    fn begin_struct_variant(
+        self,
+        _: &'static str,
+        v: &'static str,
+    ) -> Self::StructVariantDiffer {
         DebugStructDiff(Ok(self.0.debug_struct(v)))
     }
 
@@ -46,9 +54,11 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
         DebugTupleDiff(Ok(self.0.debug_tuple(ty)))
     }
 
-    fn begin_tuple_variant(self, _: &'static str, v: &'static str)
-        -> Self::TupleDiffer
-    {
+    fn begin_tuple_variant(
+        self,
+        _: &'static str,
+        v: &'static str,
+    ) -> Self::TupleDiffer {
         DebugTupleDiff(Ok(self.0.debug_tuple(v)))
     }
 
@@ -78,7 +88,7 @@ impl std::fmt::Debug for Missing {
 }
 
 struct DebugStructDiff<'a, 'b>(
-    Result<std::fmt::DebugStruct<'a, 'b>, std::fmt::Error>
+    Result<std::fmt::DebugStruct<'a, 'b>, std::fmt::Error>,
 );
 
 impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
@@ -86,7 +96,8 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
     type Err = std::fmt::Error;
 
     fn diff_field<T: ?Sized>(&mut self, name: &'static str, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.field(name, &FieldDiff(a, b) as &dyn std::fmt::Debug);
@@ -99,7 +110,7 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
 }
 
 struct DebugTupleDiff<'a, 'b>(
-    Result<std::fmt::DebugTuple<'a, 'b>, std::fmt::Error>
+    Result<std::fmt::DebugTuple<'a, 'b>, std::fmt::Error>,
 );
 
 impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
@@ -107,7 +118,8 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
     type Err = std::fmt::Error;
 
     fn diff_field<T: ?Sized>(&mut self, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.field(&FieldDiff(a, b) as &dyn std::fmt::Debug);
@@ -120,7 +132,7 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
 }
 
 struct DebugSeqDiff<'a, 'b>(
-    Result<std::fmt::DebugList<'a, 'b>, std::fmt::Error>
+    Result<std::fmt::DebugList<'a, 'b>, std::fmt::Error>,
 );
 
 impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
@@ -128,7 +140,8 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
     type Err = std::fmt::Error;
 
     fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T)
-    where T: Diff
+    where
+        T: Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
@@ -141,7 +154,7 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
 }
 
 struct DebugMapDiff<'a, 'b>(
-    Result<std::fmt::DebugMap<'a, 'b>, std::fmt::Error>
+    Result<std::fmt::DebugMap<'a, 'b>, std::fmt::Error>,
 );
 
 impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
@@ -149,8 +162,9 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
     type Err = std::fmt::Error;
 
     fn diff_entry<K, V>(&mut self, k: &K, a: &V, b: &V)
-    where K: ?Sized + Debug,
-          V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.entry(&k, &FieldDiff(a, b) as &dyn std::fmt::Debug);
@@ -158,8 +172,9 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
     }
 
     fn only_in_left<K, V>(&mut self, k: &K, a: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.entry(&k, &DIFF { L: a, R: Missing });
@@ -167,8 +182,9 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
     }
 
     fn only_in_right<K, V>(&mut self, k: &K, a: &V)
-        where K: ?Sized + Debug,
-              V: ?Sized + Diff
+    where
+        K: ?Sized + Debug,
+        V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
             f.entry(&k, &DIFF { L: Missing, R: a });
@@ -183,7 +199,8 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
 struct FieldDiff<'a, T: ?Sized>(&'a T, &'a T);
 
 impl<'a, T: ?Sized> std::fmt::Debug for FieldDiff<'a, T>
-    where T: Diff
+where
+    T: Diff,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         Diff::diff(self.0, self.1, DebugDiff(fmt))
@@ -204,7 +221,10 @@ mod tests {
 
     #[test]
     fn debug_self_struct() {
-        let a = TestStruct { distance: 12, silly: false };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
         let formatted = format!("{:?}", a);
         let diff = format!("{:?}", FieldDiff(&a, &a));
         assert_eq!(diff, formatted);
@@ -212,11 +232,16 @@ mod tests {
 
     #[test]
     fn debug_delta_struct() {
-        let a = TestStruct { distance: 12, silly: false };
-        let b = TestStruct { distance: 10, silly: false };
-        let expected =
-            "TestStruct { distance: DIFF { L: 12, R: 10 }, \
-                          silly: false }";
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
+        let b = TestStruct {
+            distance: 10,
+            silly: false,
+        };
+        let expected = "TestStruct { distance: DIFF { L: 12, R: 10 }, \
+                        silly: false }";
 
         let diff = format!("{:?}", FieldDiff(&a, &b));
         assert_eq!(diff, expected);
@@ -224,8 +249,14 @@ mod tests {
 
     #[test]
     fn debug_delta_struct_pretty() {
-        let a = TestStruct { distance: 12, silly: false };
-        let b = TestStruct { distance: 10, silly: false };
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
+        let b = TestStruct {
+            distance: 10,
+            silly: false,
+        };
 
         let expected = "\
 TestStruct {
@@ -242,13 +273,15 @@ TestStruct {
 
     #[test]
     fn debug_enum_same() {
-        let diff = format!("{:#?}", FieldDiff(&TestEnum::First, &TestEnum::First));
+        let diff =
+            format!("{:#?}", FieldDiff(&TestEnum::First, &TestEnum::First));
         assert_eq!(diff, format!("{:#?}", TestEnum::First));
     }
 
     #[test]
     fn debug_enum_different() {
-        let diff = format!("{:?}", FieldDiff(&TestEnum::First, &TestEnum::Second));
+        let diff =
+            format!("{:?}", FieldDiff(&TestEnum::First, &TestEnum::Second));
         assert_eq!(diff, "DIFF { L: First, R: Second }");
     }
 
@@ -258,7 +291,7 @@ TestStruct {
         let diff = format!("{:?}", FieldDiff(&a, &a));
         assert_eq!(diff, format!("{:?}", a));
     }
-    
+
     #[test]
     fn struct_variant_different() {
         let a = TestEnum::Struct { a: 12, b: false };
@@ -266,15 +299,20 @@ TestStruct {
 
         let diff = format!("{:?}", FieldDiff(&a, &b));
 
-        assert_eq!(diff, "Struct { a: DIFF { L: 12, R: 14 }, b: DIFF { L: false, R: true } }");
+        assert_eq!(
+            diff,
+            "Struct { a: DIFF { L: 12, R: 14 }, b: DIFF { L: false, R: true } }"
+        );
     }
 
     #[test]
     fn map() {
         use std::collections::BTreeMap;
 
-        let a: BTreeMap<usize, bool> = [(0, true), (2, false)].iter().cloned().collect();
-        let b: BTreeMap<usize, bool> = [(0, false), (1, false)].iter().cloned().collect();
+        let a: BTreeMap<usize, bool> =
+            [(0, true), (2, false)].iter().cloned().collect();
+        let b: BTreeMap<usize, bool> =
+            [(0, false), (1, false)].iter().cloned().collect();
 
         println!("{:#?}", FieldDiff(&a, &b));
     }
