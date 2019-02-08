@@ -1,5 +1,5 @@
 use std::fmt::Debug;
-use crate::{Diff, Differ, StructDiffer};
+use crate::{Diff, Differ, StructDiffer, TupleDiffer, SeqDiffer, MapDiffer};
 
 struct DebugDiff<'a, 'b: 'a>(&'a mut std::fmt::Formatter<'b>);
 
@@ -9,6 +9,10 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
 
     type StructDiffer = DebugStructDiff<'a, 'b>;
     type StructVariantDiffer = DebugStructDiff<'a, 'b>;
+    type TupleDiffer = DebugTupleDiff<'a, 'b>;
+    type TupleVariantDiffer = DebugTupleDiff<'a, 'b>;
+    type SeqDiffer = DebugSeqDiff<'a, 'b>;
+    type MapDiffer = DebugMapDiff<'a, 'b>;
 
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err> {
         self.0.debug_struct("DIFF")
@@ -32,14 +36,44 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
         DebugStructDiff(Ok(self.0.debug_struct(name)))
     }
 
-    fn begin_struct_variant(self, ty: &'static str, v: &'static str)
+    fn begin_struct_variant(self, _: &'static str, v: &'static str)
         -> Self::StructVariantDiffer
     {
-        let DebugDiff(fmt) = self;
-        let result = fmt.write_str(ty)
-            .and_then(|_| fmt.write_str("::"))
-            .map(move |_| fmt.debug_struct(v));
-        DebugStructDiff(result)
+        DebugStructDiff(Ok(self.0.debug_struct(v)))
+    }
+
+    fn begin_tuple(self, ty: &'static str) -> Self::TupleDiffer {
+        DebugTupleDiff(Ok(self.0.debug_tuple(ty)))
+    }
+
+    fn begin_tuple_variant(self, _: &'static str, v: &'static str)
+        -> Self::TupleDiffer
+    {
+        DebugTupleDiff(Ok(self.0.debug_tuple(v)))
+    }
+
+    fn begin_seq(self) -> Self::SeqDiffer {
+        DebugSeqDiff(Ok(self.0.debug_list()))
+    }
+
+    fn begin_map(self) -> Self::MapDiffer {
+        DebugMapDiff(Ok(self.0.debug_map()))
+    }
+}
+
+#[derive(Debug)]
+#[allow(non_camel_case_types)]
+#[allow(non_snake_case)]
+struct DIFF<T, S> {
+    L: T,
+    R: S,
+}
+
+struct Missing;
+
+impl std::fmt::Debug for Missing {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("(missing)")
     }
 }
 
@@ -56,6 +90,88 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
     {
         if let Ok(f) = &mut self.0 {
             f.field(name, &FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Err> {
+        self.0.and_then(|mut f| f.finish())
+    }
+}
+
+struct DebugTupleDiff<'a, 'b>(
+    Result<std::fmt::DebugTuple<'a, 'b>, std::fmt::Error>
+);
+
+impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
+    type Ok = ();
+    type Err = std::fmt::Error;
+
+    fn diff_field<T: ?Sized>(&mut self, a: &T, b: &T)
+    where T: Diff
+    {
+        if let Ok(f) = &mut self.0 {
+            f.field(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Err> {
+        self.0.and_then(|mut f| f.finish())
+    }
+}
+
+struct DebugSeqDiff<'a, 'b>(
+    Result<std::fmt::DebugList<'a, 'b>, std::fmt::Error>
+);
+
+impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
+    type Ok = ();
+    type Err = std::fmt::Error;
+
+    fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T)
+    where T: Diff
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Err> {
+        self.0.and_then(|mut f| f.finish())
+    }
+}
+
+struct DebugMapDiff<'a, 'b>(
+    Result<std::fmt::DebugMap<'a, 'b>, std::fmt::Error>
+);
+
+impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
+    type Ok = ();
+    type Err = std::fmt::Error;
+
+    fn diff_entry<K, V>(&mut self, k: &K, a: &V, b: &V)
+    where K: ?Sized + Debug,
+          V: ?Sized + Diff
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&k, &FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn only_in_left<K, V>(&mut self, k: &K, a: &V)
+        where K: ?Sized + Debug,
+              V: ?Sized + Diff
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&k, &DIFF { L: a, R: Missing });
+        }
+    }
+
+    fn only_in_right<K, V>(&mut self, k: &K, a: &V)
+        where K: ?Sized + Debug,
+              V: ?Sized + Diff
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&k, &DIFF { L: Missing, R: a });
         }
     }
 
@@ -136,4 +252,30 @@ TestStruct {
         assert_eq!(diff, "DIFF { L: First, R: Second }");
     }
 
+    #[test]
+    fn struct_variant_same() {
+        let a = TestEnum::Struct { a: 12, b: false };
+        let diff = format!("{:?}", FieldDiff(&a, &a));
+        assert_eq!(diff, format!("{:?}", a));
+    }
+    
+    #[test]
+    fn struct_variant_different() {
+        let a = TestEnum::Struct { a: 12, b: false };
+        let b = TestEnum::Struct { a: 14, b: true };
+
+        let diff = format!("{:?}", FieldDiff(&a, &b));
+
+        assert_eq!(diff, "Struct { a: DIFF { L: 12, R: 14 }, b: DIFF { L: false, R: true } }");
+    }
+
+    #[test]
+    fn map() {
+        use std::collections::BTreeMap;
+
+        let a: BTreeMap<usize, bool> = [(0, true), (2, false)].iter().cloned().collect();
+        let b: BTreeMap<usize, bool> = [(0, false), (1, false)].iter().cloned().collect();
+
+        println!("{:#?}", FieldDiff(&a, &b));
+    }
 }
