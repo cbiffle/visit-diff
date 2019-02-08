@@ -73,6 +73,10 @@ trait StructDiffer {
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 
+
+/////////////////////////////////////////////////////////////
+// Example differ
+
 #[derive(Copy, Clone, Debug)]
 struct Detector;
 
@@ -125,18 +129,22 @@ impl StructDiffer for StructDetector {
     }
 }
 
-struct DebugDiff<'a>(&'a mut std::fmt::Formatter<'a>);
 
-impl<'a> Differ for DebugDiff<'a> {
+////////////////////////////////////////////////////////////
+// Example printing differ
+
+struct DebugDiff<'a, 'b: 'a>(&'b mut std::fmt::Formatter<'a>);
+
+impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
     type Ok = ();
     type Err = std::fmt::Error;
 
-    type StructDiffer = DebugStructDiff<'a>;
+    type StructDiffer = DebugStructDiff<'a, 'b>;
 
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err> {
-        self.0.debug_struct("DIFFERENCE")
-            .field("LEFT", a)
-            .field("RIGHT", b)
+        self.0.debug_struct("DIFF")
+            .field("L", a)
+            .field("R", b)
             .finish()
     }
 
@@ -157,7 +165,39 @@ impl<'a> Differ for DebugDiff<'a> {
     }
 }
 
-struct DebugStructDiff<'a>(std::fmt::DebugStruct<'a, 'a>);
+struct DebugStructDiff<'a, 'b: 'a>(std::fmt::DebugStruct<'a, 'b>);
+
+impl<'a, 'b: 'a> StructDiffer for DebugStructDiff<'a, 'b> {
+    type Ok = ();
+    type Err = std::fmt::Error;
+
+    fn diff_field<T: ?Sized>(&mut self, name: &'static str, a: &T, b: &T)
+        -> Result<(), Self::Err>
+    where T: Diff
+    {
+        self.0.field(name, &FieldDiff(a, b) as &dyn std::fmt::Debug);
+        Ok(())
+    }
+
+    fn end(mut self) -> Result<Self::Ok, Self::Err> {
+        self.0.finish()
+    }
+}
+
+struct FieldDiff<'a, T: ?Sized>(&'a T, &'a T);
+
+impl<'a, T: ?Sized> std::fmt::Debug for FieldDiff<'a, T>
+    where T: Diff
+{
+    fn fmt<'b, 'c>(&self, fmt: &'c mut std::fmt::Formatter<'b>) -> std::fmt::Result {
+        let x = DebugDiff(unsafe { std::mem::transmute(fmt) });
+        Diff::diff(self.0, self.1, x)
+    }
+}
+
+
+//////////////////////////////////////////////////////////////
+// Impls
 
 impl Diff for bool {
     fn diff<'a, D>(a: &'a Self, b: &'a Self, out: D) -> Result<D::Ok, D::Err>
@@ -230,5 +270,50 @@ mod tests {
         let a = TestStruct { distance: 12, silly: false };
         let b = TestStruct { distance: 12, silly: true };
         assert!(Diff::diff(&a, &b, Detector).void_unwrap())
+    }
+
+    #[test]
+    fn debug_self_usize() {
+        let x = 32_usize;
+        let formatted = format!("{:?}", FieldDiff(&x, &x));
+        assert_eq!(formatted, "32");
+    }
+
+    #[test]
+    fn debug_self_struct() {
+        let a = TestStruct { distance: 12, silly: false };
+        let formatted = format!("{:?}", a);
+        let diff = format!("{:?}", FieldDiff(&a, &a));
+        assert_eq!(diff, formatted);
+    }
+
+    #[test]
+    fn debug_delta_struct() {
+        let a = TestStruct { distance: 12, silly: false };
+        let b = TestStruct { distance: 10, silly: false };
+        let expected =
+            "TestStruct { distance: DIFF { L: 12, R: 10 }, \
+                          silly: false }";
+
+        let diff = format!("{:?}", FieldDiff(&a, &b));
+        assert_eq!(diff, expected);
+    }
+
+    #[test]
+    fn debug_delta_struct_pretty() {
+        let a = TestStruct { distance: 12, silly: false };
+        let b = TestStruct { distance: 10, silly: false };
+
+        let expected = "\
+TestStruct {
+    distance: DIFF {
+        L: 12,
+        R: 10
+    },
+    silly: false
+}";
+
+        let diff = format!("{:#?}", FieldDiff(&a, &b));
+        assert_eq!(diff, expected);
     }
 }
