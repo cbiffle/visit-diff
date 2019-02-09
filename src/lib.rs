@@ -19,9 +19,7 @@ trait Differ {
     type TupleVariantDiffer: TupleDiffer<Ok = Self::Ok, Err = Self::Err>;
     type SeqDiffer: SeqDiffer<Ok = Self::Ok, Err = Self::Err>;
     type MapDiffer: MapDiffer<Ok = Self::Ok, Err = Self::Err>;
-    /*
-    type SetDiffer: Differ;
-    */
+    type SetDiffer: SetDiffer<Ok = Self::Ok, Err = Self::Err>;
 
     /// Two atomic values are different.
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err>;
@@ -65,10 +63,8 @@ trait Differ {
     /// Begin traversing a map.
     fn begin_map(self) -> Self::MapDiffer;
 
-    /*
     /// Begin traversing a set.
     fn begin_set(self) -> Self::SetDiffer;
-    */
 }
 
 trait StructDiffer {
@@ -135,6 +131,25 @@ trait MapDiffer {
     fn only_in_right<K, V>(&mut self, key: &K, b: &V)
     where
         K: ?Sized + Debug,
+        V: ?Sized + Diff;
+
+    fn end(self) -> Result<Self::Ok, Self::Err>;
+}
+
+trait SetDiffer {
+    type Ok;
+    type Err;
+
+    fn diff_equal<V>(&mut self, a: &V, b: &V)
+    where
+        V: ?Sized + Diff;
+
+    fn only_in_left<V>(&mut self, a: &V)
+    where
+        V: ?Sized + Diff;
+
+    fn only_in_right<V>(&mut self, b: &V)
+    where
         V: ?Sized + Diff;
 
     fn end(self) -> Result<Self::Ok, Self::Err>;
@@ -220,6 +235,50 @@ where
         }
         for k in bkeys {
             out.only_in_right(k, &b[k])
+        }
+
+        out.end()
+    }
+}
+
+impl<K> Diff for std::collections::BTreeSet<K>
+where
+    K: Ord + Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        use std::cmp::Ordering;
+
+        let mut out = out.begin_set();
+
+        let mut akeys = a.iter().peekable();
+        let mut bkeys = b.iter().peekable();
+
+        while let (Some(ka), Some(kb)) = (akeys.peek(), bkeys.peek()) {
+            match ka.cmp(kb) {
+                Ordering::Less => {
+                    out.only_in_left(ka);
+                    akeys.next();
+                }
+                Ordering::Equal => {
+                    out.diff_equal(ka, kb);
+                    akeys.next();
+                    bkeys.next();
+                }
+                Ordering::Greater => {
+                    out.only_in_right(kb);
+                    bkeys.next();
+                }
+            }
+        }
+
+        for k in akeys {
+            out.only_in_left(k)
+        }
+        for k in bkeys {
+            out.only_in_right(k)
         }
 
         out.end()

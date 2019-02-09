@@ -1,7 +1,9 @@
 use std::fmt::Debug;
 use void::{ResultVoidExt, Void};
 
-use crate::{Diff, Differ, MapDiffer, SeqDiffer, StructDiffer, TupleDiffer};
+use crate::{
+    Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
+};
 
 #[derive(Copy, Clone, Debug)]
 struct Detector;
@@ -16,6 +18,7 @@ impl Differ for Detector {
     type TupleVariantDiffer = TupleDetector;
     type SeqDiffer = SeqDetector;
     type MapDiffer = MapDetector;
+    type SetDiffer = SetDetector;
 
     fn difference(self, _: &Debug, _: &Debug) -> Result<Self::Ok, Self::Err> {
         Ok(true)
@@ -68,6 +71,10 @@ impl Differ for Detector {
 
     fn begin_map(self) -> Self::MapDiffer {
         MapDetector(false)
+    }
+
+    fn begin_set(self) -> Self::SetDiffer {
+        SetDetector(false)
     }
 }
 
@@ -127,6 +134,41 @@ impl SeqDiffer for SeqDetector {
         if !self.0 {
             self.0 = Diff::diff(a, b, Detector).void_unwrap();
         }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Err> {
+        Ok(self.0)
+    }
+}
+
+#[derive(Clone, Debug)]
+struct SetDetector(bool);
+
+impl SetDiffer for SetDetector {
+    type Ok = bool;
+    type Err = Void;
+
+    fn diff_equal<V>(&mut self, a: &V, b: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        if !self.0 {
+            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+        }
+    }
+
+    fn only_in_left<V>(&mut self, _: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        self.0 = true
+    }
+
+    fn only_in_right<V>(&mut self, _: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        self.0 = true
     }
 
     fn end(self) -> Result<Self::Ok, Self::Err> {

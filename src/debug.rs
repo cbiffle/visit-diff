@@ -1,4 +1,6 @@
-use crate::{Diff, Differ, MapDiffer, SeqDiffer, StructDiffer, TupleDiffer};
+use crate::{
+    Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
+};
 use std::fmt::Debug;
 
 struct DebugDiff<'a, 'b: 'a>(&'a mut std::fmt::Formatter<'b>);
@@ -13,6 +15,7 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
     type TupleVariantDiffer = DebugTupleDiff<'a, 'b>;
     type SeqDiffer = DebugSeqDiff<'a, 'b>;
     type MapDiffer = DebugMapDiff<'a, 'b>;
+    type SetDiffer = DebugSetDiff<'a, 'b>;
 
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err> {
         self.0
@@ -68,6 +71,10 @@ impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
 
     fn begin_map(self) -> Self::MapDiffer {
         DebugMapDiff(Ok(self.0.debug_map()))
+    }
+
+    fn begin_set(self) -> Self::SetDiffer {
+        DebugSetDiff(Ok(self.0.debug_set()))
     }
 }
 
@@ -145,6 +152,46 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
     {
         if let Ok(f) = &mut self.0 {
             f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Err> {
+        self.0.and_then(|mut f| f.finish())
+    }
+}
+
+struct DebugSetDiff<'a, 'b>(
+    Result<std::fmt::DebugSet<'a, 'b>, std::fmt::Error>,
+);
+
+impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
+    type Ok = ();
+    type Err = std::fmt::Error;
+
+    fn diff_equal<V>(&mut self, a: &V, b: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+        }
+    }
+
+    fn only_in_left<V>(&mut self, a: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&DIFF { L: a, R: Missing });
+        }
+    }
+
+    fn only_in_right<V>(&mut self, a: &V)
+    where
+        V: ?Sized + Diff,
+    {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&DIFF { L: Missing, R: a });
         }
     }
 
