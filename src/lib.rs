@@ -1,16 +1,26 @@
+//! Analyzing structural differences in Rust values.
+//!
+//! This scheme is modeled after a combination of `std::fmt::Formatter` and
+//! `serde::Serialize`.
+
 pub mod debug;
 pub mod detect;
 
 use std::fmt::Debug;
 
-trait Diff: Debug {
+/// A type that can be compared structurally to discover differences.
+pub trait Diff: Debug {
+    /// Traverse `a` and `b`, reporting differences to `out`.
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
     where
         D: Differ;
 }
 
-trait Differ {
+/// A type that can do something with information about structural differences.
+pub trait Differ {
+    /// Type returned on success.
     type Ok;
+    /// Type returned on failure.
     type Err;
 
     type StructDiffer: StructDiffer<Ok = Self::Ok, Err = Self::Err>;
@@ -21,13 +31,13 @@ trait Differ {
     type MapDiffer: MapDiffer<Ok = Self::Ok, Err = Self::Err>;
     type SetDiffer: SetDiffer<Ok = Self::Ok, Err = Self::Err>;
 
-    /// Two atomic values are different.
+    /// Two atomic values have been discovered to be different.
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err>;
 
     /// Two atomic values are the same.
     fn same(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err>;
 
-    /// Descend into a newtype.
+    /// Encounter a newtype.
     fn diff_newtype<T: ?Sized>(
         self,
         ty: &'static str,
@@ -67,20 +77,24 @@ trait Differ {
     fn begin_set(self) -> Self::SetDiffer;
 }
 
-trait StructDiffer {
+/// A type that can deal with differences in a `struct`.
+pub trait StructDiffer {
     type Ok;
     type Err;
 
+    /// Visits a field with values `a` and `b` in the respective structures.
     fn diff_field<T: ?Sized>(&mut self, name: &'static str, a: &T, b: &T)
     where
         T: Diff;
 
+    /// Skips a field that is excluded from differencing.
     fn skip_field<T: ?Sized>(&mut self, _name: &'static str) {}
 
+    /// Completes traversal of the struct.
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 
-trait TupleDiffer {
+pub trait TupleDiffer {
     type Ok;
     type Err;
 
@@ -93,7 +107,7 @@ trait TupleDiffer {
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 
-trait SeqDiffer {
+pub trait SeqDiffer {
     type Ok;
     type Err;
 
@@ -114,44 +128,53 @@ trait SeqDiffer {
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 
-trait MapDiffer {
+pub trait MapDiffer {
     type Ok;
     type Err;
 
+    /// Both maps contain entries for `key`; check them for differences.
     fn diff_entry<K, V>(&mut self, key: &K, a: &V, b: &V)
     where
         K: ?Sized + Debug,
         V: ?Sized + Diff;
 
+    /// Key `key` is only present in the left map, with value `a`.
     fn only_in_left<K, V>(&mut self, key: &K, a: &V)
     where
         K: ?Sized + Debug,
         V: ?Sized + Diff;
 
+    /// Key `key` is only present in the right map, with value `b`.
     fn only_in_right<K, V>(&mut self, key: &K, b: &V)
     where
         K: ?Sized + Debug,
         V: ?Sized + Diff;
 
+    /// We've reached the end of the maps.
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 
-trait SetDiffer {
+pub trait SetDiffer {
     type Ok;
     type Err;
 
+    /// The sets contain `a` and `b` which compare as equal. Check them for
+    /// differences.
     fn diff_equal<V>(&mut self, a: &V, b: &V)
     where
         V: ?Sized + Diff;
 
+    /// Value `a` is only in the left-hand set.
     fn only_in_left<V>(&mut self, a: &V)
     where
         V: ?Sized + Diff;
 
+    /// Value `b` is only in the right-hand set.
     fn only_in_right<V>(&mut self, b: &V)
     where
         V: ?Sized + Diff;
 
+    /// We've reached the end of the sets.
     fn end(self) -> Result<Self::Ok, Self::Err>;
 }
 

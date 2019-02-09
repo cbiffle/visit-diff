@@ -1,11 +1,14 @@
+//! Report differences using `Debug` and `Formatter`.
+
 use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
 };
 use std::fmt::Debug;
 
-struct DebugDiff<'a, 'b: 'a>(&'a mut std::fmt::Formatter<'b>);
+/// Adapts a `std::fmt::Formatter` into a `Differ`.
+pub struct DebugDiffer<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
 
-impl<'a, 'b> Differ for DebugDiff<'a, 'b> {
+impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
     type Ok = ();
     type Err = std::fmt::Error;
 
@@ -94,7 +97,7 @@ impl std::fmt::Debug for Missing {
     }
 }
 
-struct DebugStructDiff<'a, 'b>(
+pub struct DebugStructDiff<'a, 'b>(
     Result<std::fmt::DebugStruct<'a, 'b>, std::fmt::Error>,
 );
 
@@ -107,7 +110,7 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.field(name, &FieldDiff(a, b) as &dyn std::fmt::Debug);
+            f.field(name, &DebugDiff(a, b) as &dyn std::fmt::Debug);
         }
     }
 
@@ -116,7 +119,7 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
     }
 }
 
-struct DebugTupleDiff<'a, 'b>(
+pub struct DebugTupleDiff<'a, 'b>(
     Result<std::fmt::DebugTuple<'a, 'b>, std::fmt::Error>,
 );
 
@@ -129,7 +132,7 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.field(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+            f.field(&DebugDiff(a, b) as &dyn std::fmt::Debug);
         }
     }
 
@@ -138,7 +141,7 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
     }
 }
 
-struct DebugSeqDiff<'a, 'b>(
+pub struct DebugSeqDiff<'a, 'b>(
     Result<std::fmt::DebugList<'a, 'b>, std::fmt::Error>,
 );
 
@@ -151,7 +154,7 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&DebugDiff(a, b) as &dyn std::fmt::Debug);
         }
     }
 
@@ -160,7 +163,7 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
     }
 }
 
-struct DebugSetDiff<'a, 'b>(
+pub struct DebugSetDiff<'a, 'b>(
     Result<std::fmt::DebugSet<'a, 'b>, std::fmt::Error>,
 );
 
@@ -173,7 +176,7 @@ impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
         V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&FieldDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&DebugDiff(a, b) as &dyn std::fmt::Debug);
         }
     }
 
@@ -200,7 +203,7 @@ impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
     }
 }
 
-struct DebugMapDiff<'a, 'b>(
+pub struct DebugMapDiff<'a, 'b>(
     Result<std::fmt::DebugMap<'a, 'b>, std::fmt::Error>,
 );
 
@@ -214,7 +217,7 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
         V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&k, &FieldDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&k, &DebugDiff(a, b) as &dyn std::fmt::Debug);
         }
     }
 
@@ -243,14 +246,16 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
     }
 }
 
-struct FieldDiff<'a, T: ?Sized>(&'a T, &'a T);
+/// Wraps a pair of values into an object that, when formatted using `Debug`,
+/// shows the differences between the values.
+pub struct DebugDiff<'a, T: ?Sized>(pub &'a T, pub &'a T);
 
-impl<'a, T: ?Sized> std::fmt::Debug for FieldDiff<'a, T>
+impl<'a, T: ?Sized> std::fmt::Debug for DebugDiff<'a, T>
 where
     T: Diff,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        Diff::diff(self.0, self.1, DebugDiff(fmt))
+        Diff::diff(self.0, self.1, DebugDiffer(fmt))
     }
 }
 
@@ -262,7 +267,7 @@ mod tests {
     #[test]
     fn debug_self_usize() {
         let x = 32_usize;
-        let formatted = format!("{:?}", FieldDiff(&x, &x));
+        let formatted = format!("{:?}", DebugDiff(&x, &x));
         assert_eq!(formatted, "32");
     }
 
@@ -273,7 +278,7 @@ mod tests {
             silly: false,
         };
         let formatted = format!("{:?}", a);
-        let diff = format!("{:?}", FieldDiff(&a, &a));
+        let diff = format!("{:?}", DebugDiff(&a, &a));
         assert_eq!(diff, formatted);
     }
 
@@ -290,7 +295,7 @@ mod tests {
         let expected = "TestStruct { distance: DIFF { L: 12, R: 10 }, \
                         silly: false }";
 
-        let diff = format!("{:?}", FieldDiff(&a, &b));
+        let diff = format!("{:?}", DebugDiff(&a, &b));
         assert_eq!(diff, expected);
     }
 
@@ -314,28 +319,28 @@ TestStruct {
     silly: false
 }";
 
-        let diff = format!("{:#?}", FieldDiff(&a, &b));
+        let diff = format!("{:#?}", DebugDiff(&a, &b));
         assert_eq!(diff, expected);
     }
 
     #[test]
     fn debug_enum_same() {
         let diff =
-            format!("{:#?}", FieldDiff(&TestEnum::First, &TestEnum::First));
+            format!("{:#?}", DebugDiff(&TestEnum::First, &TestEnum::First));
         assert_eq!(diff, format!("{:#?}", TestEnum::First));
     }
 
     #[test]
     fn debug_enum_different() {
         let diff =
-            format!("{:?}", FieldDiff(&TestEnum::First, &TestEnum::Second));
+            format!("{:?}", DebugDiff(&TestEnum::First, &TestEnum::Second));
         assert_eq!(diff, "DIFF { L: First, R: Second }");
     }
 
     #[test]
     fn struct_variant_same() {
         let a = TestEnum::Struct { a: 12, b: false };
-        let diff = format!("{:?}", FieldDiff(&a, &a));
+        let diff = format!("{:?}", DebugDiff(&a, &a));
         assert_eq!(diff, format!("{:?}", a));
     }
 
@@ -344,7 +349,7 @@ TestStruct {
         let a = TestEnum::Struct { a: 12, b: false };
         let b = TestEnum::Struct { a: 14, b: true };
 
-        let diff = format!("{:?}", FieldDiff(&a, &b));
+        let diff = format!("{:?}", DebugDiff(&a, &b));
 
         assert_eq!(
             diff,
@@ -361,6 +366,6 @@ TestStruct {
         let b: BTreeMap<usize, bool> =
             [(0, false), (1, false)].iter().cloned().collect();
 
-        println!("{:#?}", FieldDiff(&a, &b));
+        println!("{:#?}", DebugDiff(&a, &b));
     }
 }
