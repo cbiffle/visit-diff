@@ -97,7 +97,7 @@ impl StructDiffer for StructDetector {
         T: Diff,
     {
         if !self.0 {
-            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+            self.0 = any_difference(a, b);
         }
     }
 
@@ -118,7 +118,7 @@ impl TupleDiffer for TupleDetector {
         T: Diff,
     {
         if !self.0 {
-            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+            self.0 = any_difference(a, b);
         }
     }
 
@@ -139,7 +139,7 @@ impl SeqDiffer for SeqDetector {
         T: Diff,
     {
         if !self.0 {
-            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+            self.0 = any_difference(a, b);
         }
     }
 
@@ -174,7 +174,7 @@ impl SetDiffer for SetDetector {
         V: ?Sized + Diff,
     {
         if !self.0 {
-            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+            self.0 = any_difference(a, b);
         }
     }
 
@@ -210,7 +210,7 @@ impl MapDiffer for MapDetector {
         V: ?Sized + Diff,
     {
         if !self.0 {
-            self.0 = Diff::diff(a, b, Detector).void_unwrap();
+            self.0 = any_difference(a, b);
         }
     }
 
@@ -247,7 +247,7 @@ mod tests {
             distance: 12,
             silly: false,
         };
-        assert_eq!(Diff::diff(&a, &a, Detector).void_unwrap(), false)
+        assert_eq!(any_difference(&a, &a), false)
     }
 
     #[test]
@@ -256,7 +256,7 @@ mod tests {
             distance: 12,
             silly: false,
         };
-        assert_eq!(Diff::diff(&a, &a.clone(), Detector).void_unwrap(), false)
+        assert_eq!(any_difference(&a, &a.clone()), false)
     }
 
     #[test]
@@ -269,7 +269,7 @@ mod tests {
             distance: 10,
             silly: false,
         };
-        assert!(Diff::diff(&a, &b, Detector).void_unwrap())
+        assert!(any_difference(&a, &b))
     }
 
     #[test]
@@ -282,7 +282,7 @@ mod tests {
             distance: 12,
             silly: true,
         };
-        assert!(Diff::diff(&a, &b, Detector).void_unwrap())
+        assert!(any_difference(&a, &b))
     }
 
     #[test]
@@ -308,11 +308,11 @@ mod tests {
     fn detector_struct_variant() {
         let a = TestEnum::Struct { a: 12, b: false };
 
-        assert_eq!(Diff::diff(&a, &a, Detector).void_unwrap(), false);
-        assert!(Diff::diff(&a, &TestEnum::First, Detector).void_unwrap());
+        assert_eq!(any_difference(&a, &a), false);
+        assert!(any_difference(&a, &TestEnum::First));
 
         let b = TestEnum::Struct { a: 14, b: true };
 
-        assert!(Diff::diff(&a, &b, Detector).void_unwrap());
+        assert!(any_difference(&a, &b));
     }
 }
