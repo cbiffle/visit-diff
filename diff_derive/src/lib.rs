@@ -1,8 +1,8 @@
 extern crate proc_macro;
 
-use std::iter::FromIterator;
 use proc_macro::TokenStream;
 use quote::{quote, quote_spanned};
+use std::iter::FromIterator;
 use syn;
 use syn::spanned::Spanned;
 
@@ -17,7 +17,7 @@ pub fn diff_derive(input: TokenStream) -> TokenStream {
 
     let dispatch = gen_dispatch(&name, &input.data);
 
-    let expanded = quote_spanned!{name.span()=>
+    let expanded = quote_spanned! {name.span()=>
         impl #impl_generics ::diffwalk::Diff for #name #ty_generics
         #where_clause {
             fn diff<D>(a: &Self, b: &Self, out: D)
@@ -71,7 +71,7 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                         #stmts
                         s.end()
                     }
-                },
+                }
                 syn::Fields::Unnamed(fields) => {
                     // A tuple struct: unnamed fields, parens. Generated code
                     // will resemble:
@@ -82,12 +82,13 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                     //   s.end()
 
                     // First, generate the `diff_field` statements.
-                    let stmts = fields.unnamed.iter().enumerate().map(|(i, f)| {
-                        let index = syn::Index::from(i);
-                        quote_spanned! {f.span()=>
-                            s.diff_field(&a.#index, &b.#index);
-                        }
-                    });
+                    let stmts =
+                        fields.unnamed.iter().enumerate().map(|(i, f)| {
+                            let index = syn::Index::from(i);
+                            quote_spanned! {f.span()=>
+                                s.diff_field(&a.#index, &b.#index);
+                            }
+                        });
                     let stmts = proc_macro2::TokenStream::from_iter(stmts);
                     quote_spanned! {ty.span()=>
                         use ::diffwalk::TupleDiffer;
@@ -95,7 +96,7 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                         #stmts
                         s.end()
                     }
-                },
+                }
                 syn::Fields::Unit => {
                     // A unit struct without fields. There is only one instance
                     // of such a type, and so we know statically that our
@@ -103,9 +104,9 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                     quote_spanned! {ty.span()=>
                         out.same(&a, &b)
                     }
-                },
+                }
             }
-        },
+        }
         syn::Data::Enum(data) => {
             // Enums are more complex than structs, because each variant can
             // have a different shape. We'll process the variants and generate
@@ -128,19 +129,12 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                         //       s.diff_field("v", v_a, v_b);
                         //       s.end()
                         //   },
-                        let a_pat = named_fields_pattern(
-                            fields.named.iter(),
-                            "_a",
-                        );
-                        let b_pat = named_fields_pattern(
-                            fields.named.iter(),
-                            "_b",
-                        );
-                        let stmts = diff_named_fields(
-                            fields.named.iter(),
-                            "_a",
-                            "_b",
-                        );
+                        let a_pat =
+                            named_fields_pattern(fields.named.iter(), "_a");
+                        let b_pat =
+                            named_fields_pattern(fields.named.iter(), "_b");
+                        let stmts =
+                            diff_named_fields(fields.named.iter(), "_a", "_b");
                         quote_spanned! {name.span()=>
                             ( #ty::#name { #a_pat },
                               #ty::#name { #b_pat }) => {
@@ -150,7 +144,7 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                                 s.end()
                             },
                         }
-                    },
+                    }
                     syn::Fields::Unnamed(fields) => {
                         // A variant with unnamed fields is very much like a
                         // tuple struct, except that we have to access the
@@ -166,14 +160,10 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                         //       s.diff_field(v_a, v_b);
                         //       s.end()
                         //   },
-                        let a_pat = unnamed_fields_pattern(
-                            fields.unnamed.iter(),
-                            "a",
-                        );
-                        let b_pat = unnamed_fields_pattern(
-                            fields.unnamed.iter(),
-                            "b",
-                        );
+                        let a_pat =
+                            unnamed_fields_pattern(fields.unnamed.iter(), "a");
+                        let b_pat =
+                            unnamed_fields_pattern(fields.unnamed.iter(), "b");
                         let stmts = diff_unnamed_fields(
                             fields.unnamed.iter(),
                             "a",
@@ -188,7 +178,7 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                                 s.end()
                             },
                         }
-                    },
+                    }
                     syn::Fields::Unit => {
                         // For a unit variant, we only need to check that both
                         // sides use the same variant.
@@ -197,7 +187,7 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                                 out.same(a, b)
                             },
                         }
-                    },
+                    }
                 }
             });
             let variants = proc_macro2::TokenStream::from_iter(variants);
@@ -209,56 +199,57 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                     _ => out.difference(a, b),
                 }
             }
-        },
+        }
         syn::Data::Union(_) => {
             unimplemented!("A `union` type cannot be meaningfully diffed")
-        },
+        }
     }
 }
 
-fn named_fields_pattern<'a, I>(fields: I, suffix: &str)
-    -> proc_macro2::TokenStream
-where I: IntoIterator<Item = &'a syn::Field>,
+fn named_fields_pattern<'a, I>(
+    fields: I,
+    suffix: &str,
+) -> proc_macro2::TokenStream
+where
+    I: IntoIterator<Item = &'a syn::Field>,
 {
     let pat = fields.into_iter().map(|f| {
         let name = f.ident.as_ref().unwrap();
-        let suffixed = syn::Ident::new(
-            &format!("{}{}", name, suffix),
-            name.span(),
-        );
+        let suffixed =
+            syn::Ident::new(&format!("{}{}", name, suffix), name.span());
         quote_spanned! {f.span()=> #name: #suffixed, }
     });
     proc_macro2::TokenStream::from_iter(pat)
 }
 
-fn unnamed_fields_pattern<'a, I>(fields: I, prefix: &str)
-    -> proc_macro2::TokenStream
-where I: IntoIterator<Item = &'a syn::Field>,
+fn unnamed_fields_pattern<'a, I>(
+    fields: I,
+    prefix: &str,
+) -> proc_macro2::TokenStream
+where
+    I: IntoIterator<Item = &'a syn::Field>,
 {
     let pat = fields.into_iter().enumerate().map(|(i, f)| {
-        let name = syn::Ident::new(
-            &format!("{}{}", prefix, i),
-            f.span(),
-        );
+        let name = syn::Ident::new(&format!("{}{}", prefix, i), f.span());
         quote_spanned! {f.span()=> #name, }
     });
     proc_macro2::TokenStream::from_iter(pat)
 }
 
-fn diff_named_fields<'a, I>(fields: I, left_suffix: &str, right_suffix: &str)
-    -> proc_macro2::TokenStream
-where I: IntoIterator<Item = &'a syn::Field>
+fn diff_named_fields<'a, I>(
+    fields: I,
+    left_suffix: &str,
+    right_suffix: &str,
+) -> proc_macro2::TokenStream
+where
+    I: IntoIterator<Item = &'a syn::Field>,
 {
     let stmts = fields.into_iter().map(|f| {
         let name = f.ident.as_ref().unwrap();
-        let left = syn::Ident::new(
-            &format!("{}{}", name, left_suffix),
-            name.span(),
-        );
-        let right = syn::Ident::new(
-            &format!("{}{}", name, right_suffix),
-            name.span(),
-        );
+        let left =
+            syn::Ident::new(&format!("{}{}", name, left_suffix), name.span());
+        let right =
+            syn::Ident::new(&format!("{}{}", name, right_suffix), name.span());
         quote_spanned! {f.span()=>
             s.diff_field(stringify!(#name), #left, #right);
         }
@@ -266,23 +257,21 @@ where I: IntoIterator<Item = &'a syn::Field>
     proc_macro2::TokenStream::from_iter(stmts)
 }
 
-fn diff_unnamed_fields<'a, I>(fields: I, left_prefix: &str, right_prefix: &str)
-    -> proc_macro2::TokenStream
-where I: IntoIterator<Item = &'a syn::Field>
+fn diff_unnamed_fields<'a, I>(
+    fields: I,
+    left_prefix: &str,
+    right_prefix: &str,
+) -> proc_macro2::TokenStream
+where
+    I: IntoIterator<Item = &'a syn::Field>,
 {
     let stmts = fields.into_iter().enumerate().map(|(i, f)| {
-        let left = syn::Ident::new(
-            &format!("{}{}", left_prefix, i),
-            f.span(),
-        );
-        let right = syn::Ident::new(
-            &format!("{}{}", right_prefix, i),
-            f.span(),
-        );
+        let left = syn::Ident::new(&format!("{}{}", left_prefix, i), f.span());
+        let right =
+            syn::Ident::new(&format!("{}{}", right_prefix, i), f.span());
         quote_spanned! {f.span()=>
             s.diff_field(#left, #right);
         }
     });
     proc_macro2::TokenStream::from_iter(stmts)
 }
-
