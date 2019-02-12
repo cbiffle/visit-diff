@@ -10,6 +10,7 @@ pub mod detect;
 pub mod refl;
 
 use std::fmt::Debug;
+use itertools::{Itertools, EitherOrBoth};
 
 /// A type that can be compared structurally to discover differences.
 pub trait Diff: Debug {
@@ -130,18 +131,12 @@ pub trait SeqDiffer {
         T: Diff,
         I: IntoIterator<Item = T>,
     {
-        let mut a = a.into_iter().peekable();
-        let mut b = b.into_iter().peekable();
-        while let (Some(ae), Some(be)) = (a.peek(), b.peek()) {
-            self.diff_element(ae, be);
-            a.next();
-            b.next();
-        }
-        for e in a {
-            self.left_excess(&e);
-        }
-        for e in b {
-            self.right_excess(&e);
+        for ab in a.into_iter().zip_longest(b) {
+            match ab {
+                EitherOrBoth::Both(a, b) => self.diff_element(&a, &b),
+                EitherOrBoth::Left(a) => self.left_excess(&a),
+                EitherOrBoth::Right(b) => self.right_excess(&b),
+            }
         }
     }
 
