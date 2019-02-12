@@ -130,6 +130,8 @@ pub trait SeqDiffer {
         let mut b = b.into_iter().peekable();
         while let (Some(ae), Some(be)) = (a.peek(), b.peek()) {
             self.diff_element(ae, be);
+            a.next();
+            b.next();
         }
         for e in a {
             self.left_excess(&e);
@@ -298,6 +300,18 @@ impl_diff_partial_eq!(i128);
 impl_diff_partial_eq!(isize);
 impl_diff_partial_eq!(&str);
 impl_diff_partial_eq!(String);
+
+impl<V> Diff for Vec<V>
+where
+    V: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        Diff::diff(&a.as_slice(), &b.as_slice(), out)
+    }
+}
 
 impl<K, V> Diff for std::collections::BTreeMap<K, V>
 where
