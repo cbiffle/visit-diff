@@ -6,7 +6,8 @@ use crate::{
 };
 
 pub fn any_difference<T>(a: &T, b: &T) -> bool
-where T: Diff + ?Sized
+where
+    T: Diff + ?Sized,
 {
     Diff::diff(a, b, Detector).void_unwrap()
 }
@@ -142,11 +143,17 @@ impl SeqDiffer for SeqDetector {
         }
     }
 
-    fn left_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+    fn left_excess<T: ?Sized>(&mut self, _: &T)
+    where
+        T: Diff,
+    {
         self.0 = true
     }
 
-    fn right_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+    fn right_excess<T: ?Sized>(&mut self, _: &T)
+    where
+        T: Diff,
+    {
         self.0 = true
     }
 

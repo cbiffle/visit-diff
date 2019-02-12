@@ -1,11 +1,16 @@
 pub trait Reflect {
     fn reflect<M>(&self, mirror: M) -> Result<M::Ok, M::Error>
-        where M: Mirror;
+    where
+        M: Mirror;
 }
 
-impl<T> Reflect for &T where T: ?Sized + Reflect {
+impl<T> Reflect for &T
+where
+    T: ?Sized + Reflect,
+{
     fn reflect<M>(&self, mirror: M) -> Result<M::Ok, M::Error>
-        where M: Mirror
+    where
+        M: Mirror,
     {
         (*self).reflect(mirror)
     }
@@ -15,37 +20,48 @@ pub trait Mirror {
     type Ok;
     type Error;
 
-    type StructMirror: StructMirror<Ok=Self::Ok, Error=Self::Error>;
+    type StructMirror: StructMirror<Ok = Self::Ok, Error = Self::Error>;
 
     fn reflect_bool(self, v: bool) -> Result<Self::Ok, Self::Error>;
 
     fn reflect_unit(self) -> Result<Self::Ok, Self::Error>;
 
-    fn reflect_newtype<T>(self, ty: &'static str, content: &T)
-        -> Result<Self::Ok, Self::Error>
-    where T: ?Sized + Reflect;
+    fn reflect_newtype<T>(
+        self,
+        ty: &'static str,
+        content: &T,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + Reflect;
 
-    fn reflect_struct(self, ty: &'static str, field_count: usize)
-        -> Result<Self::StructMirror, Self::Error>;
+    fn reflect_struct(
+        self,
+        ty: &'static str,
+        field_count: usize,
+    ) -> Result<Self::StructMirror, Self::Error>;
 }
 
 pub trait StructMirror {
     type Ok;
     type Error;
 
-    fn field<T>(&mut self, name: &'static str, val: &T)
-        -> Result<(), Self::Error>
-    where T: ?Sized + Reflect;
+    fn field<T>(
+        &mut self,
+        name: &'static str,
+        val: &T,
+    ) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Reflect;
 
     fn end(self) -> Result<Self::Ok, Self::Error>;
 }
-
 
 ////////////
 
 impl Reflect for bool {
     fn reflect<M>(&self, mirror: M) -> Result<M::Ok, M::Error>
-        where M: Mirror
+    where
+        M: Mirror,
     {
         mirror.reflect_bool(*self)
     }
@@ -53,14 +69,14 @@ impl Reflect for bool {
 
 impl Reflect for () {
     fn reflect<M>(&self, mirror: M) -> Result<M::Ok, M::Error>
-        where M: Mirror
+    where
+        M: Mirror,
     {
         mirror.reflect_unit()
     }
 }
 
 ////////////
-
 
 struct DebugMirror<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
 
@@ -78,15 +94,25 @@ impl<'a, 'b> Mirror for DebugMirror<'a, 'b> {
         <() as core::fmt::Debug>::fmt(&(), self.0)
     }
 
-    fn reflect_newtype<T>(self, ty: &'static str, content: &T)
-        -> Result<Self::Ok, Self::Error>
-    where T: ?Sized + Reflect {
-        self.0.debug_tuple(ty).field(&DebugAdapter(content)).finish()
+    fn reflect_newtype<T>(
+        self,
+        ty: &'static str,
+        content: &T,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
+        self.0
+            .debug_tuple(ty)
+            .field(&DebugAdapter(content))
+            .finish()
     }
 
-    fn reflect_struct(self, ty: &'static str, _: usize)
-        -> Result<Self::StructMirror, Self::Error>
-    {
+    fn reflect_struct(
+        self,
+        ty: &'static str,
+        _: usize,
+    ) -> Result<Self::StructMirror, Self::Error> {
         Ok(DebugStructMirror(self.0.debug_struct(ty)))
     }
 }
@@ -97,9 +123,14 @@ impl<'a, 'b> StructMirror for DebugStructMirror<'a, 'b> {
     type Ok = ();
     type Error = std::fmt::Error;
 
-    fn field<T>(&mut self, name: &'static str, val: &T)
-        -> Result<(), Self::Error>
-    where T: ?Sized + Reflect {
+    fn field<T>(
+        &mut self,
+        name: &'static str,
+        val: &T,
+    ) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
         self.0.field(name, &DebugAdapter(val));
         Ok(())
     }
@@ -113,7 +144,8 @@ impl<'a, 'b> StructMirror for DebugStructMirror<'a, 'b> {
 struct DebugAdapter<T: ?Sized>(pub T);
 
 impl<T> std::fmt::Debug for DebugAdapter<T>
-where T: ?Sized + Reflect
+where
+    T: ?Sized + Reflect,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         self.0.reflect(DebugMirror(fmt))
@@ -121,10 +153,12 @@ where T: ?Sized + Reflect
 }
 
 /// Adapts any `Reflect` as `Debug`.
-pub fn make_debug<T>(value: T) -> impl std::fmt::Debug where T: Reflect {
+pub fn make_debug<T>(value: T) -> impl std::fmt::Debug
+where
+    T: Reflect,
+{
     DebugAdapter(value)
 }
-
 
 ///////////
 
@@ -136,10 +170,12 @@ pub fn make_serialize<T: Reflect>(value: T) -> impl serde::Serialize {
 struct SerializeAdapter<T: ?Sized>(pub T);
 
 impl<T> serde::Serialize for SerializeAdapter<T>
-where T: ?Sized + Reflect
+where
+    T: ?Sized + Reflect,
 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
+    where
+        S: serde::Serializer,
     {
         self.0.reflect(SerializeMirror(serializer))
     }
@@ -147,7 +183,10 @@ where T: ?Sized + Reflect
 
 struct SerializeMirror<S>(S);
 
-impl<S> Mirror for SerializeMirror<S> where S: serde::Serializer {
+impl<S> Mirror for SerializeMirror<S>
+where
+    S: serde::Serializer,
+{
     type Ok = S::Ok;
     type Error = S::Error;
 
@@ -161,30 +200,46 @@ impl<S> Mirror for SerializeMirror<S> where S: serde::Serializer {
         self.0.serialize_unit()
     }
 
-    fn reflect_newtype<T>(self, ty: &'static str, content: &T)
-        -> Result<Self::Ok, Self::Error>
-    where T: ?Sized + Reflect {
-        self.0.serialize_newtype_struct(ty, &SerializeAdapter(content))
+    fn reflect_newtype<T>(
+        self,
+        ty: &'static str,
+        content: &T,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
+        self.0
+            .serialize_newtype_struct(ty, &SerializeAdapter(content))
     }
 
-    fn reflect_struct(self, ty: &'static str, field_count: usize)
-        -> Result<Self::StructMirror, Self::Error>
-    {
-        self.0.serialize_struct(ty, field_count).map(SerializeStructMirror)
+    fn reflect_struct(
+        self,
+        ty: &'static str,
+        field_count: usize,
+    ) -> Result<Self::StructMirror, Self::Error> {
+        self.0
+            .serialize_struct(ty, field_count)
+            .map(SerializeStructMirror)
     }
 }
 
 struct SerializeStructMirror<S>(S);
 
 impl<S> StructMirror for SerializeStructMirror<S>
-where S: serde::ser::SerializeStruct
+where
+    S: serde::ser::SerializeStruct,
 {
     type Ok = S::Ok;
     type Error = S::Error;
 
-    fn field<T>(&mut self, name: &'static str, val: &T)
-        -> Result<(), Self::Error>
-    where T: ?Sized + Reflect {
+    fn field<T>(
+        &mut self,
+        name: &'static str,
+        val: &T,
+    ) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
         self.0.serialize_field(name, &SerializeAdapter(val))
     }
 
@@ -222,16 +277,26 @@ impl Mirror for GenMirror {
         Ok(Gen::Unit)
     }
 
-    fn reflect_newtype<T>(self, ty: &'static str, content: &T)
-        -> Result<Self::Ok, Self::Error>
-    where T: ?Sized + Reflect {
+    fn reflect_newtype<T>(
+        self,
+        ty: &'static str,
+        content: &T,
+    ) -> Result<Self::Ok, Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
         Ok(Gen::Newtype(ty, Box::new(content.reflect(GenMirror)?)))
     }
 
-    fn reflect_struct(self, ty: &'static str, field_count: usize)
-        -> Result<Self::StructMirror, Self::Error>
-    {
-        Ok(GenStructMirror { name: ty, fields: Vec::with_capacity(field_count) })
+    fn reflect_struct(
+        self,
+        ty: &'static str,
+        field_count: usize,
+    ) -> Result<Self::StructMirror, Self::Error> {
+        Ok(GenStructMirror {
+            name: ty,
+            fields: Vec::with_capacity(field_count),
+        })
     }
 }
 
@@ -244,18 +309,27 @@ impl StructMirror for GenStructMirror {
     type Ok = Gen;
     type Error = ();
 
-    fn field<T>(&mut self, name: &'static str, val: &T)
-        -> Result<(), Self::Error>
-    where T: ?Sized + Reflect {
+    fn field<T>(
+        &mut self,
+        name: &'static str,
+        val: &T,
+    ) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Reflect,
+    {
         self.fields.push((name, val.reflect(GenMirror)?));
         Ok(())
     }
 
     fn end(self) -> Result<Self::Ok, Self::Error> {
-        Ok(Gen::Struct(self.name, Struct { fields: self.fields }))
+        Ok(Gen::Struct(
+            self.name,
+            Struct {
+                fields: self.fields,
+            },
+        ))
     }
 }
-
 
 //////////
 
@@ -271,13 +345,14 @@ mod tests {
 
     impl Reflect for TestStruct {
         fn reflect<M>(&self, mirror: M) -> Result<M::Ok, M::Error>
-            where M: Mirror
-            {
-                let mut s = mirror.reflect_struct("TestStruct", 2)?;
-                s.field("a", &self.a)?;
-                s.field("b", &self.b)?;
-                s.end()
-            }
+        where
+            M: Mirror,
+        {
+            let mut s = mirror.reflect_struct("TestStruct", 2)?;
+            s.field("a", &self.a)?;
+            s.field("b", &self.b)?;
+            s.end()
+        }
     }
 
     /// Confirms that the `Debug` instance generated for `DebugAdapter<T>`
@@ -289,14 +364,8 @@ mod tests {
     fn debug() {
         let a = TestStruct { a: true, b: () };
 
-        assert_eq!(
-            format!("{:?}", DebugAdapter(a)),
-            format!("{:?}", a),
-        );
+        assert_eq!(format!("{:?}", DebugAdapter(a)), format!("{:?}", a),);
 
-        assert_eq!(
-            format!("{:#?}", DebugAdapter(a)),
-            format!("{:#?}", a),
-        );
+        assert_eq!(format!("{:#?}", DebugAdapter(a)), format!("{:#?}", a),);
     }
 }

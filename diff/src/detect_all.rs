@@ -8,7 +8,8 @@ use crate::{
 use crate::detect::any_difference;
 
 pub fn all_different<T>(a: &T, b: &T) -> bool
-where T: Diff + ?Sized
+where
+    T: Diff + ?Sized,
 {
     Diff::diff(a, b, Detector).void_unwrap()
 }
@@ -94,7 +95,8 @@ struct DiffCounter {
 
 impl DiffCounter {
     fn consider<T>(&mut self, a: &T, b: &T)
-        where T: ?Sized + Diff
+    where
+        T: ?Sized + Diff,
     {
         self.total += 1;
         if any_difference(a, b) {
@@ -164,11 +166,17 @@ impl SeqDiffer for SeqDetector {
         self.0.consider(a, b)
     }
 
-    fn left_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+    fn left_excess<T: ?Sized>(&mut self, _: &T)
+    where
+        T: Diff,
+    {
         self.0.diff()
     }
 
-    fn right_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+    fn right_excess<T: ?Sized>(&mut self, _: &T)
+    where
+        T: Diff,
+    {
         self.0.diff()
     }
 
@@ -266,10 +274,7 @@ mod tests {
             distance: 12,
             silly: false,
         };
-        let b = TestStruct {
-            distance: 10,
-            ..a
-        };
+        let b = TestStruct { distance: 10, ..a };
         assert_eq!(all_different(&a, &b), false)
     }
 

@@ -1,8 +1,8 @@
 //! Uses the `diffwalk::debug` module to print differences between two data
 //! structures in `Debug` format.
 
-use diffwalk::Diff;
 use diffwalk::debug::DebugDiff;
+use diffwalk::Diff;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Arbitrary example data structure.
@@ -33,20 +33,33 @@ enum Other {
 
 fn main() {
     let a = Newtype(Top {
-        child1: Child1 { name: "Sprocket", size: 12 },
+        child1: Child1 {
+            name: "Sprocket",
+            size: 12,
+        },
         others: vec![
             Other::Prince,
-            Other::Bob { last_name: "Roberts" },
+            Other::Bob {
+                last_name: "Roberts",
+            },
         ],
     });
 
     let b = Newtype(Top {
         // Note: both name and size are different.
-        child1: Child1 { name: "Ralph", size: usize::max_value() },
+        child1: Child1 {
+            name: "Ralph",
+            size: usize::max_value(),
+        },
         others: vec![
             Other::Prince,
-            Other::Bob { last_name: "Roberts" },
-            Other::Bob { last_name: "Bobberson" }, // added
+            Other::Bob {
+                last_name: "Roberts",
+            },
+            // added
+            Other::Bob {
+                last_name: "Bobberson",
+            },
         ],
     });
 

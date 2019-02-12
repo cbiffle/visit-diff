@@ -39,9 +39,7 @@ impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
     where
         T: Diff,
     {
-        self.0.debug_tuple(name)
-            .field(&DebugDiff(a, b))
-            .finish()
+        self.0.debug_tuple(name).field(&DebugDiff(a, b)).finish()
     }
 
     fn begin_struct(self, name: &'static str) -> Self::StructDiffer {
@@ -158,13 +156,19 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
         }
     }
 
-    fn left_excess<T: ?Sized>(&mut self, a: &T) where T: Diff {
+    fn left_excess<T: ?Sized>(&mut self, a: &T)
+    where
+        T: Diff,
+    {
         if let Ok(f) = &mut self.0 {
             f.entry(&DIFF { L: a, R: Missing });
         }
     }
 
-    fn right_excess<T: ?Sized>(&mut self, b: &T) where T: Diff {
+    fn right_excess<T: ?Sized>(&mut self, b: &T)
+    where
+        T: Diff,
+    {
         if let Ok(f) = &mut self.0 {
             f.entry(&DIFF { L: Missing, R: b });
         }
@@ -308,8 +312,9 @@ mod tests {
             distance: 10,
             silly: false,
         };
+        #[rustfmt::skip]
         let expected = "TestStruct { distance: DIFF { L: 12, R: 10 }, \
-                        silly: false }";
+                                     silly: false }";
 
         let diff = format!("{:?}", DebugDiff(&a, &b));
         assert_eq!(diff, expected);
@@ -325,6 +330,7 @@ mod tests {
             distance: 10, // different
             silly: true,  // also different
         };
+        #[rustfmt::skip]
         let expected = "DIFF { L: TestStruct { distance: 12, silly: false }, \
                                R: TestStruct { distance: 10, silly: true } }";
 
@@ -384,10 +390,7 @@ TestStruct {
 
         let diff = format!("{:?}", DebugDiff(&a, &b));
 
-        assert_eq!(
-            diff,
-            "Struct { a: DIFF { L: 12, R: 14 }, b: false }"
-        );
+        assert_eq!(diff, "Struct { a: DIFF { L: 12, R: 14 }, b: false }");
     }
 
     #[test]

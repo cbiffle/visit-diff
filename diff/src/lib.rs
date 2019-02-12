@@ -119,8 +119,12 @@ pub trait SeqDiffer {
     where
         T: Diff;
 
-    fn left_excess<T: ?Sized>(&mut self, a: &T) where T: Diff;
-    fn right_excess<T: ?Sized>(&mut self, b: &T) where T: Diff;
+    fn left_excess<T: ?Sized>(&mut self, a: &T)
+    where
+        T: Diff;
+    fn right_excess<T: ?Sized>(&mut self, b: &T)
+    where
+        T: Diff;
 
     fn diff_elements<T, I>(&mut self, a: I, b: I)
     where

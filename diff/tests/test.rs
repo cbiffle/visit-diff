@@ -33,5 +33,4 @@ enum TestEnum {
 enum EnumZ {}
 
 #[test]
-fn foo() {
-}
+fn foo() {}
