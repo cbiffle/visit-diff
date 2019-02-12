@@ -158,6 +158,18 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
         }
     }
 
+    fn left_excess<T: ?Sized>(&mut self, a: &T) where T: Diff {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&DIFF { L: a, R: Missing });
+        }
+    }
+
+    fn right_excess<T: ?Sized>(&mut self, b: &T) where T: Diff {
+        if let Ok(f) = &mut self.0 {
+            f.entry(&DIFF { L: Missing, R: b });
+        }
+    }
+
     fn end(self) -> Result<Self::Ok, Self::Err> {
         self.0.and_then(|mut f| f.finish())
     }

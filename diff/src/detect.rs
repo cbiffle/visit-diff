@@ -136,6 +136,14 @@ impl SeqDiffer for SeqDetector {
         }
     }
 
+    fn left_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+        self.0 = true
+    }
+
+    fn right_excess<T: ?Sized>(&mut self, _: &T) where T: Diff {
+        self.0 = true
+    }
+
     fn end(self) -> Result<Self::Ok, Self::Err> {
         Ok(self.0)
     }

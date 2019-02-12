@@ -118,13 +118,24 @@ pub trait SeqDiffer {
     where
         T: Diff;
 
+    fn left_excess<T: ?Sized>(&mut self, a: &T) where T: Diff;
+    fn right_excess<T: ?Sized>(&mut self, b: &T) where T: Diff;
+
     fn diff_elements<T, I>(&mut self, a: I, b: I)
     where
         T: Diff,
         I: IntoIterator<Item = T>,
     {
-        for (a, b) in a.into_iter().zip(b.into_iter()) {
-            self.diff_element(&a, &b);
+        let mut a = a.into_iter().peekable();
+        let mut b = b.into_iter().peekable();
+        while let (Some(ae), Some(be)) = (a.peek(), b.peek()) {
+            self.diff_element(ae, be);
+        }
+        for e in a {
+            self.left_excess(&e);
+        }
+        for e in b {
+            self.right_excess(&e);
         }
     }
 
@@ -196,31 +207,97 @@ where
     }
 }
 
-impl Diff for bool {
+impl<T> Diff for Box<T>
+where
+    T: Diff,
+{
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
     where
         D: Differ,
     {
-        if a != b {
-            out.difference(a, b)
-        } else {
-            out.same(a, b)
-        }
+        Diff::diff(&**a, &**b, out)
     }
 }
 
-impl Diff for usize {
+impl<T> Diff for std::rc::Rc<T>
+where
+    T: Diff,
+{
     fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
     where
         D: Differ,
     {
-        if a != b {
-            out.difference(a, b)
-        } else {
-            out.same(a, b)
-        }
+        Diff::diff(&**a, &**b, out)
     }
 }
+
+impl<T> Diff for std::sync::Arc<T>
+where
+    T: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        Diff::diff(&**a, &**b, out)
+    }
+}
+
+impl<T> Diff for &[T]
+where
+    T: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        let mut s = out.begin_seq();
+        s.diff_elements(*a, *b);
+        s.end()
+    }
+}
+
+impl Diff for () {
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        out.same(a, b)
+    }
+}
+
+macro_rules! impl_diff_partial_eq {
+    ($ty:ty) => {
+        impl Diff for $ty {
+            fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+            where
+                D: Differ,
+            {
+                if a != b {
+                    out.difference(a, b)
+                } else {
+                    out.same(a, b)
+                }
+            }
+        }
+    };
+}
+
+impl_diff_partial_eq!(bool);
+impl_diff_partial_eq!(u8);
+impl_diff_partial_eq!(u16);
+impl_diff_partial_eq!(u32);
+impl_diff_partial_eq!(u64);
+impl_diff_partial_eq!(u128);
+impl_diff_partial_eq!(usize);
+impl_diff_partial_eq!(i8);
+impl_diff_partial_eq!(i16);
+impl_diff_partial_eq!(i32);
+impl_diff_partial_eq!(i64);
+impl_diff_partial_eq!(i128);
+impl_diff_partial_eq!(isize);
+impl_diff_partial_eq!(&str);
+impl_diff_partial_eq!(String);
 
 impl<K, V> Diff for std::collections::BTreeMap<K, V>
 where
