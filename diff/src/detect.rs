@@ -5,6 +5,12 @@ use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
 };
 
+pub fn any_difference<T>(a: &T, b: &T) -> bool
+where T: Diff + ?Sized
+{
+    Diff::diff(a, b, Detector).void_unwrap()
+}
+
 #[derive(Copy, Clone, Debug)]
 struct Detector;
 
