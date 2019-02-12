@@ -110,7 +110,7 @@ impl<'a, 'b> StructMirror for DebugStructMirror<'a, 'b> {
 }
 
 /// Adapts any `Reflect` as `Debug`.
-pub struct DebugAdapter<T: ?Sized>(pub T);
+struct DebugAdapter<T: ?Sized>(pub T);
 
 impl<T> std::fmt::Debug for DebugAdapter<T>
 where T: ?Sized + Reflect
@@ -120,11 +120,20 @@ where T: ?Sized + Reflect
     }
 }
 
+/// Adapts any `Reflect` as `Debug`.
+pub fn make_debug<T>(value: T) -> impl std::fmt::Debug where T: Reflect {
+    DebugAdapter(value)
+}
+
 
 ///////////
 
+pub fn make_serialize<T: Reflect>(value: T) -> impl serde::Serialize {
+    SerializeAdapter(value)
+}
+
 /// Adapts any `Reflect` as `Serialize`.
-pub struct SerializeAdapter<T: ?Sized>(pub T);
+struct SerializeAdapter<T: ?Sized>(pub T);
 
 impl<T> serde::Serialize for SerializeAdapter<T>
 where T: ?Sized + Reflect
@@ -184,6 +193,71 @@ where S: serde::ser::SerializeStruct
     }
 }
 
+//////////
+
+pub enum Gen {
+    Unit,
+    Bool(bool),
+    Newtype(&'static str, Box<Gen>),
+    Struct(&'static str, Struct),
+}
+
+pub struct Struct {
+    pub fields: Vec<(&'static str, Gen)>,
+}
+
+struct GenMirror;
+
+impl Mirror for GenMirror {
+    type Ok = Gen;
+    type Error = ();
+
+    type StructMirror = GenStructMirror;
+
+    fn reflect_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
+        Ok(Gen::Bool(v))
+    }
+
+    fn reflect_unit(self) -> Result<Self::Ok, Self::Error> {
+        Ok(Gen::Unit)
+    }
+
+    fn reflect_newtype<T>(self, ty: &'static str, content: &T)
+        -> Result<Self::Ok, Self::Error>
+    where T: ?Sized + Reflect {
+        Ok(Gen::Newtype(ty, Box::new(content.reflect(GenMirror)?)))
+    }
+
+    fn reflect_struct(self, ty: &'static str, field_count: usize)
+        -> Result<Self::StructMirror, Self::Error>
+    {
+        Ok(GenStructMirror { name: ty, fields: Vec::with_capacity(field_count) })
+    }
+}
+
+struct GenStructMirror {
+    name: &'static str,
+    fields: Vec<(&'static str, Gen)>,
+}
+
+impl StructMirror for GenStructMirror {
+    type Ok = Gen;
+    type Error = ();
+
+    fn field<T>(&mut self, name: &'static str, val: &T)
+        -> Result<(), Self::Error>
+    where T: ?Sized + Reflect {
+        self.fields.push((name, val.reflect(GenMirror)?));
+        Ok(())
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        Ok(Gen::Struct(self.name, Struct { fields: self.fields }))
+    }
+}
+
+
+//////////
 
 #[cfg(test)]
 mod tests {
