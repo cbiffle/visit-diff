@@ -23,11 +23,7 @@ impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
     type SetDiffer = DebugSetDiff<'a, 'b>;
 
     fn difference(self, a: &Debug, b: &Debug) -> Result<Self::Ok, Self::Err> {
-        self.0
-            .debug_struct("DIFF")
-            .field("L", a)
-            .field("R", b)
-            .finish()
+        DIFF { L: a, R: b }.fmt(self.0)
     }
 
     fn same(self, a: &Debug, _: &Debug) -> Result<Self::Ok, Self::Err> {
