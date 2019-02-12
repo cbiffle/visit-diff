@@ -1,6 +1,7 @@
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use void::{ResultVoidExt, Void};
+use itertools::{Itertools, EitherOrBoth};
 
 use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
@@ -25,6 +26,11 @@ trait Accumulator: Into<bool> + Default {
     where
         T: ?Sized + Diff;
 
+    fn consider_all<I>(&mut self, left: I, right: I)
+    where
+        I: IntoIterator,
+        I::Item: Diff;
+
     fn diff(&mut self);
 }
 
@@ -38,6 +44,20 @@ impl Accumulator for Any {
     {
         if !self.0 {
             self.0 = any_difference(a, b);
+        }
+    }
+
+    fn consider_all<I>(&mut self, left: I, right: I)
+    where
+        I: IntoIterator,
+        I::Item: Diff
+    {
+        if !self.0 {
+            self.0 = left.into_iter().zip_longest(right)
+                .any(|ab| match ab {
+                    EitherOrBoth::Both(a, b) => any_difference(&a, &b),
+                    _ => true,
+                });
         }
     }
 
@@ -68,6 +88,20 @@ impl Accumulator for All {
     {
         if self.0 {
             self.0 = any_difference(a, b);
+        }
+    }
+
+    fn consider_all<I>(&mut self, left: I, right: I)
+    where
+        I: IntoIterator,
+        I::Item: Diff
+    {
+        if !self.0 {
+            self.0 = left.into_iter().zip_longest(right)
+                .all(|ab| match ab {
+                    EitherOrBoth::Both(a, b) => any_difference(&a, &b),
+                    _ => true,
+                });
         }
     }
 
@@ -205,6 +239,14 @@ impl<A: Accumulator> SeqDiffer for SeqDetector<A> {
         T: Diff,
     {
         self.0.consider(a, b);
+    }
+
+    fn diff_elements<T, I>(&mut self, a: I, b: I)
+    where
+        T: Diff,
+        I: IntoIterator<Item = T>,
+    {
+        self.0.consider_all(a, b)
     }
 
     fn left_excess<T: ?Sized>(&mut self, _: &T)
