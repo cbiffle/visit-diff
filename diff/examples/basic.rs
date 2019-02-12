@@ -8,6 +8,9 @@ use diffwalk::debug::DebugDiff;
 // Arbitrary example data structure.
 
 #[derive(Debug, Diff)]
+struct Newtype(Top);
+
+#[derive(Debug, Diff)]
 struct Top {
     pub child1: Child1,
     pub others: Vec<Other>,
@@ -29,15 +32,15 @@ enum Other {
 // Actual code.
 
 fn main() {
-    let a = Top {
+    let a = Newtype(Top {
         child1: Child1 { name: "Sprocket", size: 12 },
         others: vec![
             Other::Prince,
             Other::Bob { last_name: "Roberts" },
         ],
-    };
+    });
 
-    let b = Top {
+    let b = Newtype(Top {
         // Note: both name and size are different.
         child1: Child1 { name: "Ralph", size: usize::max_value() },
         others: vec![
@@ -45,7 +48,7 @@ fn main() {
             Other::Bob { last_name: "Roberts" },
             Other::Bob { last_name: "Bobberson" }, // added
         ],
-    };
+    });
 
     println!("{:#?}", DebugDiff(&a, &b));
 }

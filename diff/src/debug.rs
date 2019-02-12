@@ -34,14 +34,16 @@ impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
 
     fn diff_newtype<T: ?Sized>(
         self,
-        _: &'static str,
+        name: &'static str,
         a: &T,
         b: &T,
     ) -> Result<Self::Ok, Self::Err>
     where
         T: Diff,
     {
-        Diff::diff(a, b, self)
+        self.0.debug_tuple(name)
+            .field(&DebugDiff(a, b))
+            .finish()
     }
 
     fn begin_struct(self, name: &'static str) -> Self::StructDiffer {
