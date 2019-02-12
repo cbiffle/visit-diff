@@ -5,6 +5,8 @@ use crate::{
 };
 use std::fmt::Debug;
 
+use super::detect_all::all_different;
+
 /// Adapts a `std::fmt::Formatter` into a `Differ`.
 pub struct DebugDiffer<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
 
@@ -269,7 +271,11 @@ where
     T: Diff,
 {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        Diff::diff(self.0, self.1, DebugDiffer(fmt))
+        if all_different(self.0, self.1) {
+            DebugDiffer(fmt).difference(&self.0, &self.1)
+        } else {
+            Diff::diff(self.0, self.1, DebugDiffer(fmt))
+        }
     }
 }
 
@@ -308,6 +314,23 @@ mod tests {
         };
         let expected = "TestStruct { distance: DIFF { L: 12, R: 10 }, \
                         silly: false }";
+
+        let diff = format!("{:?}", DebugDiff(&a, &b));
+        assert_eq!(diff, expected);
+    }
+
+    #[test]
+    fn debug_full_delta_struct() {
+        let a = TestStruct {
+            distance: 12,
+            silly: false,
+        };
+        let b = TestStruct {
+            distance: 10, // different
+            silly: true,  // also different
+        };
+        let expected = "DIFF { L: TestStruct { distance: 12, silly: false }, \
+                               R: TestStruct { distance: 10, silly: true } }";
 
         let diff = format!("{:?}", DebugDiff(&a, &b));
         assert_eq!(diff, expected);
@@ -361,13 +384,13 @@ TestStruct {
     #[test]
     fn struct_variant_different() {
         let a = TestEnum::Struct { a: 12, b: false };
-        let b = TestEnum::Struct { a: 14, b: true };
+        let b = TestEnum::Struct { a: 14, b: false };
 
         let diff = format!("{:?}", DebugDiff(&a, &b));
 
         assert_eq!(
             diff,
-            "Struct { a: DIFF { L: 12, R: 14 }, b: DIFF { L: false, R: true } }"
+            "Struct { a: DIFF { L: 12, R: 14 }, b: false }"
         );
     }
 
