@@ -5,7 +5,7 @@ use crate::{
 };
 use std::fmt::Debug;
 
-use super::detect_all::all_different;
+use super::detect::all_different;
 
 /// Adapts a `std::fmt::Formatter` into a `Differ`.
 pub struct DebugDiffer<'a, 'b>(&'a mut std::fmt::Formatter<'b>);

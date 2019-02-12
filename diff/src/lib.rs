@@ -7,7 +7,6 @@ pub use diffwalk_derive::*;
 
 pub mod debug;
 pub mod detect;
-pub mod detect_all;
 pub mod refl;
 
 use std::fmt::Debug;
