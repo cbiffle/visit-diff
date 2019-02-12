@@ -1,10 +1,13 @@
 [package]
-name = "diffwalk"
+name = "diff_derive"
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
 
+[lib]
+proc-macro = true
+
 [dependencies]
-void = "1"
-serde = "1.0.87"
-diff_derive = { path = "../diff_derive" }
+syn = "0.15.26"
+proc-macro2 = "0.4.27"
+quote = "0.6.11"
