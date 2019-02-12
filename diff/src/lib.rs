@@ -3,7 +3,7 @@
 //! This scheme is modeled after a combination of `std::fmt::Formatter` and
 //! `serde::Serialize`.
 
-pub use diff_derive::*;
+pub use diffwalk_derive::*;
 
 pub mod debug;
 pub mod detect;

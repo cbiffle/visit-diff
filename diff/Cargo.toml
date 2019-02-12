@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 void = "1"
 serde = "1.0.87"
-diff_derive = { path = "../diff_derive" }
+diffwalk_derive = { path = "../diff_derive" }
