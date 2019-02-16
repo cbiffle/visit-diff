@@ -47,56 +47,8 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
     match data {
         syn::Data::Struct(data) => {
             match &data.fields {
-                syn::Fields::Named(fields) => {
-                    // A traditional struct: named fields, curly braces, etc.
-                    // Generated code will resemble:
-                    //
-                    //   let mut s = out.begin_struct("TypeName");
-                    //   s.diff_field("field1", &a.field1, &b.field1);
-                    //   s.diff_field("field2", &a.field2, &b.field2);
-                    //   s.end()
-
-                    // First, generate the `diff_field` statements.
-                    let stmts = fields.named.iter().map(|f| {
-                        let name = &f.ident;
-                        quote_spanned! {f.span()=>
-                            s.diff_field(stringify!(#name), &a.#name, &b.#name);
-                        }
-                    });
-                    let stmts = proc_macro2::TokenStream::from_iter(stmts);
-
-                    quote_spanned! {ty.span()=>
-                        use ::diffwalk::StructDiffer;
-                        let mut s = out.begin_struct(stringify!(#ty));
-                        #stmts
-                        s.end()
-                    }
-                }
-                syn::Fields::Unnamed(fields) => {
-                    // A tuple struct: unnamed fields, parens. Generated code
-                    // will resemble:
-                    //
-                    //   let mut s = out.begin_tuple("TypeName");
-                    //   s.diff_field(&a.0, &b.0);
-                    //   s.diff_field(&a.1, &b.1);
-                    //   s.end()
-
-                    // First, generate the `diff_field` statements.
-                    let stmts =
-                        fields.unnamed.iter().enumerate().map(|(i, f)| {
-                            let index = syn::Index::from(i);
-                            quote_spanned! {f.span()=>
-                                s.diff_field(&a.#index, &b.#index);
-                            }
-                        });
-                    let stmts = proc_macro2::TokenStream::from_iter(stmts);
-                    quote_spanned! {ty.span()=>
-                        use ::diffwalk::TupleDiffer;
-                        let mut s = out.begin_tuple(stringify!(#ty));
-                        #stmts
-                        s.end()
-                    }
-                }
+                syn::Fields::Named(fields) => gen_named_struct(ty, fields),
+                syn::Fields::Unnamed(fields) => gen_unnamed_struct(ty, fields),
                 syn::Fields::Unit => {
                     // A unit struct without fields. There is only one instance
                     // of such a type, and so we know statically that our
@@ -115,77 +67,16 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
                 let name = &v.ident;
                 match &v.fields {
                     syn::Fields::Named(fields) => {
-                        // A variant with named fields is very much like a
-                        // struct, except that we have to access the fields
-                        // using pattern matching instead of dotted names.
-                        //
-                        // Generated match arm will resemble:
-                        //
-                        //   ( Ty::Var { f: f_a, v: v_a },
-                        //     Ty::Var { f: f_b, v: v_b } ) => {
-                        //       use ::diffwalk::StructDiffer;
-                        //       let mut s = out.begin_struct("Ty");
-                        //       s.diff_field("f", f_a, f_b);
-                        //       s.diff_field("v", v_a, v_b);
-                        //       s.end()
-                        //   },
-                        let a_pat =
-                            named_fields_pattern(fields.named.iter(), "_a");
-                        let b_pat =
-                            named_fields_pattern(fields.named.iter(), "_b");
-                        let stmts =
-                            diff_named_fields(fields.named.iter(), "_a", "_b");
-                        quote_spanned! {name.span()=>
-                            ( #ty::#name { #a_pat },
-                              #ty::#name { #b_pat }) => {
-                                use ::diffwalk::StructDiffer;
-                                let mut s = out.begin_struct(stringify!(#name));
-                                #stmts
-                                s.end()
-                            },
-                        }
+                        gen_named_variant(ty, name, fields)
                     }
                     syn::Fields::Unnamed(fields) => {
-                        // A variant with unnamed fields is very much like a
-                        // tuple struct, except that we have to access the
-                        // fields by pattern matching instead of using dotted
-                        // numbers.
-                        //
-                        // Generated match arm will resemble:
-                        //   ( Ty::Var(a0, a1),
-                        //     Ty::Var(b0, b1) ) => {
-                        //       use ::diffwalk::TupletDiffer;
-                        //       let mut s = out.begin_tuple("Ty");
-                        //       s.diff_field(f_a, f_b);
-                        //       s.diff_field(v_a, v_b);
-                        //       s.end()
-                        //   },
-                        let a_pat =
-                            unnamed_fields_pattern(fields.unnamed.iter(), "a");
-                        let b_pat =
-                            unnamed_fields_pattern(fields.unnamed.iter(), "b");
-                        let stmts = diff_unnamed_fields(
-                            fields.unnamed.iter(),
-                            "a",
-                            "b",
-                        );
-
-                        quote_spanned! {name.span()=>
-                            (#ty::#name(#a_pat), #ty::#name(#b_pat)) => {
-                                use ::diffwalk::TupleDiffer;
-                                let mut s = out.begin_tuple(stringify!(#name));
-                                #stmts
-                                s.end()
-                            },
-                        }
+                        gen_unnamed_variant(ty, name, fields)
                     }
                     syn::Fields::Unit => {
                         // For a unit variant, we only need to check that both
                         // sides use the same variant.
                         quote_spanned! {v.span()=>
-                            (#ty::#name, #ty::#name) => {
-                                out.same(a, b)
-                            },
+                            (#ty::#name, #ty::#name) => out.same(a, b),
                         }
                     }
                 }
@@ -203,6 +94,138 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
         syn::Data::Union(_) => {
             unimplemented!("A `union` type cannot be meaningfully diffed")
         }
+    }
+}
+
+fn gen_named_struct(
+    ty: &syn::Ident,
+    fields: &syn::FieldsNamed,
+) -> proc_macro2::TokenStream {
+    // A traditional struct: named fields, curly braces, etc.
+    // Generated code will resemble:
+    //
+    //   let mut s = out.begin_struct("TypeName");
+    //   s.diff_field("field1", &a.field1, &b.field1);
+    //   s.diff_field("field2", &a.field2, &b.field2);
+    //   s.end()
+
+    // First, generate the `diff_field` statements.
+    let stmts = fields.named.iter().map(|f| {
+        let name = &f.ident;
+        quote_spanned! {f.span()=>
+            s.diff_field(stringify!(#name), &a.#name, &b.#name);
+        }
+    });
+    let stmts = proc_macro2::TokenStream::from_iter(stmts);
+
+    gen_named_struct_impl(ty, stmts)
+}
+
+fn gen_named_variant(
+    ty: &syn::Ident,
+    name: &syn::Ident,
+    fields: &syn::FieldsNamed,
+) -> proc_macro2::TokenStream {
+    // A variant with named fields is very much like a
+    // struct, except that we have to access the fields
+    // using pattern matching instead of dotted names.
+    //
+    // Generated match arm will resemble:
+    //
+    //   ( Ty::Var { f: f_a, v: v_a },
+    //     Ty::Var { f: f_b, v: v_b } ) => {
+    //       use ::diffwalk::StructDiffer;
+    //       let mut s = out.begin_struct("Ty");
+    //       s.diff_field("f", f_a, f_b);
+    //       s.diff_field("v", v_a, v_b);
+    //       s.end()
+    //   },
+    let a_pat = named_fields_pattern(fields.named.iter(), "_a");
+    let b_pat = named_fields_pattern(fields.named.iter(), "_b");
+    let stmts = diff_named_fields(fields.named.iter(), "_a", "_b");
+    let walk = gen_named_struct_impl(name, stmts);
+    quote_spanned! {name.span()=>
+        ( #ty::#name { #a_pat },
+          #ty::#name { #b_pat }) => {
+            #walk
+        },
+    }
+}
+
+fn gen_named_struct_impl(
+    ty: &syn::Ident,
+    stmts: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    quote_spanned! {ty.span()=>
+        use ::diffwalk::StructDiffer;
+        let mut s = out.begin_struct(stringify!(#ty));
+        #stmts
+        s.end()
+    }
+}
+
+fn gen_unnamed_struct(
+    ty: &syn::Ident,
+    fields: &syn::FieldsUnnamed,
+) -> proc_macro2::TokenStream {
+    // A tuple struct: unnamed fields, parens. Generated code
+    // will resemble:
+    //
+    //   let mut s = out.begin_tuple("TypeName");
+    //   s.diff_field(&a.0, &b.0);
+    //   s.diff_field(&a.1, &b.1);
+    //   s.end()
+
+    // First, generate the `diff_field` statements.
+    let stmts = fields.unnamed.iter().enumerate().map(|(i, f)| {
+        let index = syn::Index::from(i);
+        quote_spanned! {f.span()=>
+            s.diff_field(&a.#index, &b.#index);
+        }
+    });
+    let stmts = proc_macro2::TokenStream::from_iter(stmts);
+    gen_unnamed_impl(ty, stmts)
+}
+
+fn gen_unnamed_variant(
+    ty: &syn::Ident,
+    name: &syn::Ident,
+    fields: &syn::FieldsUnnamed,
+) -> proc_macro2::TokenStream {
+    // A variant with unnamed fields is very much like a tuple struct, except
+    // that we have to access the fields by pattern matching instead of using
+    // dotted numbers.
+    //
+    // Generated match arm will resemble:
+    //   ( Ty::Var(a0, a1),
+    //     Ty::Var(b0, b1) ) => {
+    //       use ::diffwalk::TupletDiffer;
+    //       let mut s = out.begin_tuple("Ty");
+    //       s.diff_field(f_a, f_b);
+    //       s.diff_field(v_a, v_b);
+    //       s.end()
+    //   },
+    let a_pat = unnamed_fields_pattern(fields.unnamed.iter(), "a");
+    let b_pat = unnamed_fields_pattern(fields.unnamed.iter(), "b");
+    let stmts = diff_unnamed_fields(fields.unnamed.iter(), "a", "b");
+    let walk = gen_unnamed_impl(name, stmts);
+
+    quote_spanned! {name.span()=>
+        (#ty::#name(#a_pat), #ty::#name(#b_pat)) => {
+            #walk
+        },
+    }
+}
+
+fn gen_unnamed_impl(
+    ty: &syn::Ident,
+    stmts: proc_macro2::TokenStream,
+) -> proc_macro2::TokenStream {
+    quote_spanned! {ty.span()=>
+        use ::diffwalk::TupleDiffer;
+        let mut s = out.begin_tuple(stringify!(#ty));
+        #stmts
+        s.end()
     }
 }
 
