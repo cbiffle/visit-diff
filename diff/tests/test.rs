@@ -1,6 +1,7 @@
 #![allow(unused)]
 
 use diffwalk::Diff;
+use diffwalk::debug::DebugDiff;
 
 /// structy struct
 #[derive(Diff, Debug)]
@@ -33,4 +34,30 @@ enum TestEnum {
 enum EnumZ {}
 
 #[test]
-fn foo() {}
+fn debug_struct() {
+    let s = TestStruct {
+        a: true,
+        b: (),
+    };
+    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+}
+
+#[test]
+fn debug_enum_a() {
+    let s = TestEnum::A;
+    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+}
+
+#[test]
+fn debug_enum_b() {
+    let s = TestEnum::B { unit: (), size: 12 };
+    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+}
+
+#[test]
+fn debug_enum_c() {
+    let s = TestEnum::C(true, 42);
+    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+}
+
+
