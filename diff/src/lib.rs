@@ -11,6 +11,8 @@
 //! - [`any_difference`] and [`all_different`] scan values for differences and
 //!   return a `bool`.
 //!
+//! You can derive [`Diff`] for any custom type that implements `Debug`.
+//!
 //! # Under the hood
 //!
 //! This scheme is modeled after a combination of `core::fmt::Formatter` and
