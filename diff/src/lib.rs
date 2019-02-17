@@ -73,6 +73,7 @@ pub use visit_diff_derive::*;
 mod debug;
 mod detect;
 mod unit;
+pub mod constant;
 #[macro_use]
 mod impls;
 #[cfg(feature = "std")]
