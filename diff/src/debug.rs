@@ -353,7 +353,8 @@ where
 ///
 /// [`all_different`]: fn.all_different.html
 pub fn debug_diff<T>(a: T, b: T) -> impl Debug
-    where T: Diff
+where
+    T: Diff,
 {
     DebugDiff(a, b)
 }

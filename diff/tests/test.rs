@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use visit_diff::Diff;
 use visit_diff::debug_diff;
+use visit_diff::Diff;
 
 /// structy struct
 #[derive(Diff, Debug)]

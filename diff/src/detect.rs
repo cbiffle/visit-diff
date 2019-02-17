@@ -1,6 +1,6 @@
-use itertools::{EitherOrBoth, Itertools};
 use core::fmt::Debug;
 use core::marker::PhantomData;
+use itertools::{EitherOrBoth, Itertools};
 use void::{ResultVoidExt, Void};
 
 use crate::{

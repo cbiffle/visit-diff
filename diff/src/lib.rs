@@ -73,11 +73,11 @@ pub use visit_diff_derive::*;
 mod debug;
 mod detect;
 
-use itertools::{EitherOrBoth, Itertools};
 use core::fmt::Debug;
+use itertools::{EitherOrBoth, Itertools};
 
 pub use debug::debug_diff;
-pub use detect::{any_difference, all_different};
+pub use detect::{all_different, any_difference};
 
 /// A type that can be compared structurally to discover differences.
 ///
