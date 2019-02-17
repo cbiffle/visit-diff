@@ -79,6 +79,8 @@ mod impls;
 #[cfg(feature = "std")]
 mod std_impls;
 
+pub mod record;
+
 use core::fmt::Debug;
 use itertools::{EitherOrBoth, Itertools};
 
