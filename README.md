@@ -3,13 +3,13 @@
 This is a library for easily comparing Rust data structures to detect
 differences. This is useful, for example, when reporting a test failure.
 
-The mechanism uses two cooperating traits:
+The simplest use case:
 
-- `Diff` is implemented by a structure that can be compared.
-- `Differ` is implemented by code that does something with the results.
+1. Put a `#[derive(Diff)]` annotation on your type.
 
-This lets you replace the code responding to the diff (the `Differ`) with the
-strategy of your choice. Because the interaction between the traits is all
-static, the two are optimized together at no runtime cost.
+2. Replace `assert_eq!` with `assert_eq_diff!`.
 
-(If you've used `serde` this will look familiar.)
+Now your error messages will highlight diffs instead of making you hunt for them
+manually.
+
+See the API docs on the module for more.
