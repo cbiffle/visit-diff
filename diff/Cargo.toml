@@ -13,4 +13,4 @@ itertools = { version = "0.8.0", default-features = false }
 
 [features]
 default = ["visit_diff_derive", "std"]
-std = ["serde", "itertools/use_std", "void/std"]
+std = ["serde"]
