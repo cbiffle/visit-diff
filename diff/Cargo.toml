@@ -8,5 +8,8 @@ workspace = ".."
 [dependencies]
 void = "1"
 serde = "1.0.87"
-visit_diff_derive = { path = "../diff_derive" }
+visit_diff_derive = { path = "../diff_derive", optional = true }
 itertools = "0.8.0"
+
+[features]
+default = ["visit_diff_derive"]

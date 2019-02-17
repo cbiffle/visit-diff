@@ -3,6 +3,7 @@
 //! This scheme is modeled after a combination of `std::fmt::Formatter` and
 //! `serde::Serialize`.
 
+#[cfg(feature = "visit_diff_derive")]
 pub use visit_diff_derive::*;
 
 pub mod debug;
