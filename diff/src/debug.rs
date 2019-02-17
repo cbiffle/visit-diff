@@ -358,6 +358,42 @@ pub fn debug_diff<T>(a: T, b: T) -> impl Debug
     DebugDiff(a, b)
 }
 
+/// Replacement for the standard `assert_eq!` macro that prints a [`debug_diff`]
+/// between its arguments on failure.
+///
+/// [`debug_diff`]: fn.debug_diff.html
+#[macro_export]
+macro_rules! assert_eq_diff {
+    ($left:expr, $right:expr) => ({
+        match (&$left, &$right) {
+            (left_val, right_val) => {
+                if !(*left_val == *right_val) {
+                    panic!(r#"assertion failed: `(left == right)`
+difference:
+{:#?}"#, $crate::debug_diff(left_val, right_val))
+                }
+            }
+        }
+    });
+    ($left:expr, $right:expr,) => ({
+        assert_eq!($left, $right)
+    });
+    ($left:expr, $right:expr, $($arg:tt)+) => ({
+        match (&($left), &($right)) {
+            (left_val, right_val) => {
+                if !(*left_val == *right_val) {
+                    panic!(r#"assertion failed: `(left == right)`
+{}
+difference:
+{:#?}"#,
+                            format_args!($($arg)+),
+                            left_val, right_val)
+                }
+            }
+        }
+    });
+}
+
 #[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
