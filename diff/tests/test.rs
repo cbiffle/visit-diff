@@ -19,7 +19,7 @@ struct TestTStruct(bool, ());
 struct TestUStruct;
 
 /// enum variations
-#[derive(Diff, Debug)]
+#[derive(Copy, Clone, Diff, Debug)]
 enum TestEnum {
     /// unit
     A,
@@ -33,26 +33,35 @@ enum TestEnum {
 #[derive(Diff, Debug)]
 enum EnumZ {}
 
-#[test]
-fn debug_struct() {
-    let s = TestStruct { a: true, b: () };
-    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
+macro_rules! debug_equivalence {
+    ($($name:ident => $x:expr;)*) => {
+        mod debug_equiv {
+            use super::*;
+            $(
+                #[test]
+                fn $name() {
+                    let x = $x;
+                    assert_eq!(format!("{:?}", x),
+                               format!("{:?}", debug_diff(&x, &x)));
+                }
+            )*
+        }
+    };
 }
 
-#[test]
-fn debug_enum_a() {
-    let s = TestEnum::A;
-    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
-}
-
-#[test]
-fn debug_enum_b() {
-    let s = TestEnum::B { unit: (), size: 12 };
-    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
-}
-
-#[test]
-fn debug_enum_c() {
-    let s = TestEnum::C(true, 42);
-    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
+debug_equivalence! {
+    actual_unit => ();
+    refs => &&mut &();
+    r#struct => TestStruct { a: true, b: () };
+    tuple_struct => TestTStruct(true, ());
+    unit => TestUStruct;
+    enum_a => TestEnum::A;
+    enum_b => TestEnum::B { unit: (), size: 12 };
+    enum_c => TestEnum::C(true, 42);
+    slice => &[TestEnum::A, TestEnum::B { unit: (), size: 0 }] as &[TestEnum];
+    vec => vec![TestEnum::A; 10];
+    u32 => 42u32;
+    str => "hello, world";
+    cell => core::cell::Cell::new(42u32);
+    ref_cell => core::cell::RefCell::new(42u32);
 }
