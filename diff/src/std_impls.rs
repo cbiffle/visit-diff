@@ -1,7 +1,6 @@
 use super::*;
 
 /// Diff boxes by dereferencing.
-#[cfg(feature = "std")]
 impl<T> Diff for Box<T>
 where
     T: Diff,
@@ -15,7 +14,6 @@ where
 }
 
 /// Diff Rcs by dereferencing.
-#[cfg(feature = "std")]
 impl<T> Diff for std::rc::Rc<T>
 where
     T: Diff,
@@ -29,7 +27,6 @@ where
 }
 
 /// Diff Arcs by dereferencing.
-#[cfg(feature = "std")]
 impl<T> Diff for std::sync::Arc<T>
 where
     T: Diff,
@@ -42,10 +39,29 @@ where
     }
 }
 
-#[cfg(feature = "std")]
-impl_diff_partial_eq!(String);
+/// Diff Cow by dereferencing.
+impl<'a, T> Diff for std::borrow::Cow<'a, T>
+where
+    T: Clone + Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        Diff::diff(&**a, &**b, out)
+    }
+}
 
-#[cfg(feature = "std")]
+impl_diff_partial_eq!(String);
+impl_diff_partial_eq!(std::io::ErrorKind);
+impl_diff_partial_eq!(std::io::SeekFrom);
+impl_diff_partial_eq!(std::net::Ipv4Addr);
+impl_diff_partial_eq!(std::net::Ipv6Addr);
+impl_diff_partial_eq!(std::net::SocketAddrV4);
+impl_diff_partial_eq!(std::net::SocketAddrV6);
+impl_diff_partial_eq!(std::net::IpAddr);
+impl_diff_partial_eq!(std::net::SocketAddr);
+
 impl<V> Diff for Vec<V>
 where
     V: Diff,
@@ -58,7 +74,34 @@ where
     }
 }
 
-#[cfg(feature = "std")]
+impl<V> Diff for std::collections::VecDeque<V>
+where
+    V: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        let mut out = out.begin_seq();
+        out.diff_elements(a.iter(), b.iter());
+        out.end()
+    }
+}
+
+impl<V> Diff for std::collections::LinkedList<V>
+where
+    V: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        let mut out = out.begin_seq();
+        out.diff_elements(a.iter(), b.iter());
+        out.end()
+    }
+}
+
 impl<K, V> Diff for std::collections::BTreeMap<K, V>
 where
     K: Ord + Debug,
@@ -68,43 +111,51 @@ where
     where
         D: Differ,
     {
-        use core::cmp::Ordering;
+        use itertools::{EitherOrBoth, Itertools};
 
         let mut out = out.begin_map();
 
-        let mut akeys = a.keys().peekable();
-        let mut bkeys = b.keys().peekable();
-
-        while let (Some(ka), Some(kb)) = (akeys.peek(), bkeys.peek()) {
-            match ka.cmp(kb) {
-                Ordering::Less => {
-                    out.only_in_left(ka, &a[ka]);
-                    akeys.next();
-                }
-                Ordering::Equal => {
-                    out.diff_entry(ka, &a[ka], &b[kb]);
-                    akeys.next();
-                    bkeys.next();
-                }
-                Ordering::Greater => {
-                    out.only_in_right(kb, &b[kb]);
-                    bkeys.next();
-                }
+        for ab in a.iter().merge_join_by(b, |(i, _), (j, _)| i.cmp(j)) {
+            match ab {
+                EitherOrBoth::Left((k, v)) => out.only_in_left(k, v),
+                EitherOrBoth::Right((k, v)) => out.only_in_right(k, v),
+                EitherOrBoth::Both((k, a), (_, b)) => out.diff_entry(k, a, b),
             }
-        }
-
-        for k in akeys {
-            out.only_in_left(k, &a[k])
-        }
-        for k in bkeys {
-            out.only_in_right(k, &b[k])
         }
 
         out.end()
     }
 }
 
-#[cfg(feature = "std")]
+impl<K, V> Diff for std::collections::HashMap<K, V>
+where
+    K: Eq + std::hash::Hash + Debug,
+    V: Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        let mut out = out.begin_map();
+
+        for (k, va) in a {
+            if let Some(vb) = b.get(k) {
+                out.diff_entry(k, va, vb)
+            } else {
+                out.only_in_left(k, va)
+            }
+        }
+
+        for (k, vb) in b {
+            if !a.contains_key(k) {
+                out.only_in_right(k, vb)
+            }
+        }
+
+        out.end()
+    }
+}
+
 impl<K> Diff for std::collections::BTreeSet<K>
 where
     K: Ord + Diff,
@@ -113,36 +164,42 @@ where
     where
         D: Differ,
     {
-        use core::cmp::Ordering;
+        use itertools::{EitherOrBoth, Itertools};
 
         let mut out = out.begin_set();
 
-        let mut akeys = a.iter().peekable();
-        let mut bkeys = b.iter().peekable();
-
-        while let (Some(ka), Some(kb)) = (akeys.peek(), bkeys.peek()) {
-            match ka.cmp(kb) {
-                Ordering::Less => {
-                    out.only_in_left(ka);
-                    akeys.next();
-                }
-                Ordering::Equal => {
-                    out.diff_equal(ka, kb);
-                    akeys.next();
-                    bkeys.next();
-                }
-                Ordering::Greater => {
-                    out.only_in_right(kb);
-                    bkeys.next();
-                }
+        for ab in a.iter().merge_join_by(b, |i, j| i.cmp(j)) {
+            match ab {
+                EitherOrBoth::Left(a) => out.only_in_left(a),
+                EitherOrBoth::Right(a) => out.only_in_right(a),
+                EitherOrBoth::Both(a, b) => out.diff_equal(a, b),
             }
         }
 
-        for k in akeys {
-            out.only_in_left(k)
+        out.end()
+    }
+}
+
+impl<K> Diff for std::collections::HashSet<K>
+where
+    K: std::hash::Hash + Eq + Diff,
+{
+    fn diff<D>(a: &Self, b: &Self, out: D) -> Result<D::Ok, D::Err>
+    where
+        D: Differ,
+    {
+        let mut out = out.begin_set();
+
+        for e in a.intersection(b) {
+            out.diff_equal(e, b.get(e).unwrap());
         }
-        for k in bkeys {
-            out.only_in_right(k)
+
+        for e in a.difference(b) {
+            out.only_in_left(e);
+        }
+
+        for e in b.difference(a) {
+            out.only_in_right(e);
         }
 
         out.end()
