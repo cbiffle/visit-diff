@@ -1,6 +1,7 @@
 [package]
-name = "visit_diff_derive"
-description = "Deriving for visit_diff."
+name = "visit_diff_derive_tests"
+publish = false
+description = "Tests separated out of visit_diff_derive."
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
@@ -8,13 +9,11 @@ workspace = ".."
 license = "BSD-2-Clause"
 repository = "https://github.com/cbiffle/visit-diff"
 
-[lib]
-proc-macro = true
-
 [dependencies]
-syn = "0.15.26"
-proc-macro2 = "0.4.27"
-quote = "0.6.11"
+
+[dev-dependencies]
+visit_diff = { version = "0.1.0", path = "../diff" }
+visit_diff_derive = { version = "0.1.0", path = "../diff_derive" }
 
 [badges]
 travis-ci = { repository = "cbiffle/visit-diff" }

@@ -2,4 +2,5 @@
 members = [
   "diff",
   "diff_derive",
+  "diff_derive_tests",
 ]
