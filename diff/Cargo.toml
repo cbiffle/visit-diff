@@ -17,7 +17,6 @@ categories = [
 
 [dependencies]
 void = { version = "1", default-features = false }
-serde = { version = "1.0.87", optional = true }
 itertools = { version = "0.8.0", default-features = false }
 
 [dependencies.visit_diff_derive]
@@ -25,7 +24,9 @@ version = "0.1.0"
 path = "../diff_derive"
 optional = true
 
-
 [features]
 default = ["visit_diff_derive", "std"]
-std = ["serde"]
+std = []
+
+[badges]
+travis-ci = { repository = "cbiffle/visit-diff" }

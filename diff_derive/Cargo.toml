@@ -15,3 +15,9 @@ proc-macro = true
 syn = "0.15.26"
 proc-macro2 = "0.4.27"
 quote = "0.6.11"
+
+[dev-dependencies]
+visit_diff = { version = "0.1.0", path = "../diff" }
+
+[badges]
+travis-ci = { repository = "cbiffle/visit-diff" }
