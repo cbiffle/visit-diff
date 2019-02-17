@@ -1,3 +1,6 @@
+//! Derives the `Diff` trait naively, using the literal structure of the
+//! datatype.
+
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
@@ -32,6 +35,9 @@ pub fn diff_derive(input: TokenStream) -> TokenStream {
     TokenStream::from(expanded)
 }
 
+/// Naively slaps a `Diff` bound on every generic type parameter. This leads to
+/// overconstrained impls but it's sure easy -- and it's essentially what the
+/// built in derives do.
 fn add_trait_bounds(mut generics: syn::Generics) -> syn::Generics {
     for param in &mut generics.params {
         if let syn::GenericParam::Type(type_param) = param {
@@ -97,6 +103,10 @@ fn gen_dispatch(ty: &syn::Ident, data: &syn::Data) -> proc_macro2::TokenStream {
     }
 }
 
+/// Generates dispatcher for a named struct.
+///
+/// Named structs are different from enum variants with named fields, because of
+/// the different ways we access their fields.
 fn gen_named_struct(
     ty: &syn::Ident,
     fields: &syn::FieldsNamed,
@@ -121,6 +131,10 @@ fn gen_named_struct(
     gen_named_struct_impl(ty, stmts)
 }
 
+/// Generates dispatcher for a named enum variant.
+///
+/// Named structs are different from enum variants with named fields, because of
+/// the different ways we access their fields.
 fn gen_named_variant(
     ty: &syn::Ident,
     name: &syn::Ident,
@@ -152,6 +166,7 @@ fn gen_named_variant(
     }
 }
 
+/// Common struct field walking code.
 fn gen_named_struct_impl(
     ty: &syn::Ident,
     stmts: proc_macro2::TokenStream,
@@ -164,6 +179,7 @@ fn gen_named_struct_impl(
     }
 }
 
+/// Generates dispatcher for a struct with unnamed fields (i.e. a tuple struct).
 fn gen_unnamed_struct(
     ty: &syn::Ident,
     fields: &syn::FieldsUnnamed,
@@ -187,6 +203,8 @@ fn gen_unnamed_struct(
     gen_unnamed_impl(ty, stmts)
 }
 
+/// Generates dispatcher for an enum variant with unnamed fields (i.e. a tuple
+/// variant).
 fn gen_unnamed_variant(
     ty: &syn::Ident,
     name: &syn::Ident,
@@ -217,6 +235,7 @@ fn gen_unnamed_variant(
     }
 }
 
+/// Common unnamed field walking code.
 fn gen_unnamed_impl(
     ty: &syn::Ident,
     stmts: proc_macro2::TokenStream,
@@ -229,6 +248,28 @@ fn gen_unnamed_impl(
     }
 }
 
+/// Generates a pattern match that captures named fields under new names. This
+/// is used to capture the values of fields in a named-field enum variant.
+///
+/// Because we are matching *two copies* of the variant, we can't use the simple
+/// struct field match syntax, as it would try to bind each name twice:
+///
+/// ```ignore
+/// (Variant { a, b, c }, Variant { a, b, c })
+/// ```
+///
+/// Instead, we use this function to generate newly named bindings for each
+/// field, suffixed by `suffix` -- which is different for the left and right
+/// side. So, if we used the suffix `_left` on one side and `_right` on the
+/// other, we'd get the following:
+///
+/// ```ignore
+/// (Variant { a: a_left, b: b_left, c: c_left },
+///  Variant { a: a_right, b: b_right, c: c_right })
+/// ```
+///
+/// (This function is only responsible for the portion *within* the curly braces
+/// above.)
 fn named_fields_pattern<'a, I>(
     fields: I,
     suffix: &str,
@@ -245,6 +286,19 @@ where
     proc_macro2::TokenStream::from_iter(pat)
 }
 
+/// Generates a pattern match that gives names to unnamed fields. This is used
+/// to capture the values of fields in a tuple-style enum variant.
+///
+/// We simply append a number to the given `prefix` for each field. So, if we
+/// used the prefix `left_` on one side and `right_` on the other, a three-field
+/// tuple enum variant would produce the following match pattern:
+///
+/// ```ignore
+/// (Variant(left_0, left_1, left_2), Variant(right_0, right_1, right_2))
+/// ```
+///
+/// (This function is only responsible for the portion *within* the inner
+/// parentheses above.)
 fn unnamed_fields_pattern<'a, I>(
     fields: I,
     prefix: &str,
@@ -259,6 +313,8 @@ where
     proc_macro2::TokenStream::from_iter(pat)
 }
 
+/// Given named fields bound by `named_fields_pattern`, generates code to apply
+/// the `StructDiffer` to each pair.
 fn diff_named_fields<'a, I>(
     fields: I,
     left_suffix: &str,
@@ -280,6 +336,8 @@ where
     proc_macro2::TokenStream::from_iter(stmts)
 }
 
+/// Given unnamed fields bound by `unnamed_fields_pattern`, generates code to
+/// apply the `TupleDiffer` to each pair.
 fn diff_unnamed_fields<'a, I>(
     fields: I,
     left_prefix: &str,
