@@ -1,5 +1,6 @@
 [package]
 name = "visit_diff"
+description = "Efficiently finding differences between data structures."
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
@@ -17,8 +18,13 @@ categories = [
 [dependencies]
 void = { version = "1", default-features = false }
 serde = { version = "1.0.87", optional = true }
-visit_diff_derive = { path = "../diff_derive", optional = true }
 itertools = { version = "0.8.0", default-features = false }
+
+[dependencies.visit_diff_derive]
+version = "0.1.0"
+path = "../diff_derive"
+optional = true
+
 
 [features]
 default = ["visit_diff_derive", "std"]
