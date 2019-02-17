@@ -1,7 +1,7 @@
 //! Uses the `visit_diff::debug` module to print differences between two data
 //! structures in `Debug` format.
 
-use visit_diff::debug::DebugDiff;
+use visit_diff::debug_diff;
 use visit_diff::Diff;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,5 +63,5 @@ fn main() {
         ],
     });
 
-    println!("{:#?}", DebugDiff(&a, &b));
+    println!("{:#?}", debug_diff(a, b));
 }

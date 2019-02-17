@@ -7,6 +7,26 @@ use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
 };
 
+/// Checks for any difference between `a` and `b`.
+///
+/// This difference could be at the very top (like different variants of an
+/// enum) or nested within the structure.
+///
+/// ```
+/// use visit_diff::{Diff, any_difference};
+///
+/// #[derive(Diff, Debug)]
+/// struct ExampleStruct {
+///     name: &'static str,
+///     age: usize,
+/// }
+///
+/// let left = ExampleStruct { name: "Bob", age: 4 };
+/// let right = ExampleStruct { name: "Rototron 3k", age: 5 };
+///
+/// assert_eq!(any_difference(&left, &left), false);
+/// assert_eq!(any_difference(&left, &right), true);
+/// ```
 pub fn any_difference<T>(a: &T, b: &T) -> bool
 where
     T: Diff + ?Sized,
@@ -14,6 +34,39 @@ where
     Diff::diff(a, b, Detector::<Any>::default()).void_unwrap()
 }
 
+/// Checks if there is something different about *every top-level part* of `a`
+/// and `b`. For example, if every field of two structs has some difference.
+///
+/// The individual parts are compared using [`any_difference`].
+///
+/// This is used to adjust the granularity of diff reporting by [`debug_diff`]:
+/// it will show compound types (like structs) as different at the top level if
+/// they are `all_different`, or diff individual fields if not.
+///
+/// ```
+/// use visit_diff::{Diff, all_different};
+///
+/// #[derive(Diff, Debug)]
+/// struct ExampleStruct {
+///     name: &'static str,
+///     age: usize,
+/// }
+///
+/// let left = ExampleStruct { name: "Bob", age: 4 };
+/// let right = ExampleStruct { name: "Rototron 3k", age: 4 };
+///
+/// assert_eq!(
+///     all_different(&left, &right),
+///     false,
+///     "Bob and Rototron have few things in common, but they're the same age.",
+/// );
+///
+/// let right = ExampleStruct { age: 5, ..right};  // if we change the age...
+/// assert_eq!(all_different(&left, &right), true);
+/// ```
+///
+/// [`any_difference`]: fn.any_difference.html
+/// [`debug_diff`]: fn.debug_diff.html
 pub fn all_different<T>(a: &T, b: &T) -> bool
 where
     T: Diff + ?Sized,

@@ -8,7 +8,7 @@ use core::fmt::Debug;
 use super::detect::all_different;
 
 /// Adapts a `core::fmt::Formatter` into a `Differ`.
-pub struct DebugDiffer<'a, 'b>(&'a mut core::fmt::Formatter<'b>);
+struct DebugDiffer<'a, 'b>(&'a mut core::fmt::Formatter<'b>);
 
 impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
     type Ok = ();
@@ -95,7 +95,7 @@ impl core::fmt::Debug for Missing {
     }
 }
 
-pub struct DebugStructDiff<'a, 'b>(
+struct DebugStructDiff<'a, 'b>(
     Result<core::fmt::DebugStruct<'a, 'b>, core::fmt::Error>,
 );
 
@@ -117,7 +117,7 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
     }
 }
 
-pub struct DebugTupleDiff<'a, 'b>(
+struct DebugTupleDiff<'a, 'b>(
     Result<core::fmt::DebugTuple<'a, 'b>, core::fmt::Error>,
 );
 
@@ -139,7 +139,7 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
     }
 }
 
-pub struct DebugSeqDiff<'a, 'b>(
+struct DebugSeqDiff<'a, 'b>(
     Result<core::fmt::DebugList<'a, 'b>, core::fmt::Error>,
 );
 
@@ -179,7 +179,7 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
     }
 }
 
-pub struct DebugSetDiff<'a, 'b>(
+struct DebugSetDiff<'a, 'b>(
     Result<core::fmt::DebugSet<'a, 'b>, core::fmt::Error>,
 );
 
@@ -219,7 +219,7 @@ impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
     }
 }
 
-pub struct DebugMapDiff<'a, 'b>(
+struct DebugMapDiff<'a, 'b>(
     Result<core::fmt::DebugMap<'a, 'b>, core::fmt::Error>,
 );
 
@@ -264,19 +264,98 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
 
 /// Wraps a pair of values into an object that, when formatted using `Debug`,
 /// shows the differences between the values.
-pub struct DebugDiff<'a, T: ?Sized>(pub &'a T, pub &'a T);
+struct DebugDiff<T>(pub T, pub T);
 
-impl<'a, T: ?Sized> core::fmt::Debug for DebugDiff<'a, T>
+impl<T> core::fmt::Debug for DebugDiff<T>
 where
     T: Diff,
 {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
-        if all_different(self.0, self.1) {
+        if all_different(&self.0, &self.1) {
             DebugDiffer(fmt).difference(&self.0, &self.1)
         } else {
-            Diff::diff(self.0, self.1, DebugDiffer(fmt))
+            Diff::diff(&self.0, &self.1, DebugDiffer(fmt))
         }
     }
+}
+
+/// Given two values that can be diffed, returns an object that will describe
+/// their differences when formatted using `Debug`.
+///
+/// The result can be used anywhere you'd normally format something with
+/// `Debug`, such as calls to `println!`:
+///
+/// ```
+/// use visit_diff::{Diff, debug_diff};
+///
+/// #[derive(Diff, Debug)]
+/// struct ExampleStruct {
+///     name: &'static str,
+///     age: usize,
+/// }
+///
+/// let left = ExampleStruct { name: "Bob", age: 4 };
+/// let right = ExampleStruct { name: "Rototron 3k", age: 5 };
+///
+/// println!("Compact: {:?}", debug_diff(&left, &right));
+/// println!("Pretty: {:#?}", debug_diff(&left, &right));
+/// ```
+///
+/// This prints:
+///
+/// ```text
+/// Compact: DIFF { L: ExampleStruct { name: "Bob", age: 4 }, R: ExampleStruct { name: "Rototron 3k", age: 5 } }
+/// Pretty: DIFF {
+///     L: ExampleStruct {
+///         name: "Bob",
+///         age: 4
+///     },
+///     R: ExampleStruct {
+///         name: "Rototron 3k",
+///         age: 5
+///     }
+/// }
+/// ```
+///
+/// This is showing the `DIFF` at the top level, because all fields of the
+/// structs are different. If only a single field is different, a more precise
+/// diff happens:
+///
+/// ```
+/// # use visit_diff::{Diff, debug_diff};
+/// # #[derive(Diff, Debug)]
+/// # struct ExampleStruct {
+/// #     name: &'static str,
+/// #     age: usize,
+/// #  }
+/// let left = ExampleStruct { name: "Bob", age: 4 };
+/// let right = ExampleStruct { name: "Bob", age: 5 };
+///
+/// println!("Compact: {:?}", debug_diff(&left, &right));
+/// println!("Pretty: {:#?}", debug_diff(&left, &right));
+/// ```
+///
+/// This now prints:
+///
+/// ```text
+/// Compact: ExampleStruct { name: "Bob", age: DIFF { L: 4, R: 5 } }
+/// Pretty: ExampleStruct {
+///     name: "Bob",
+///     age: DIFF {
+///         L: 4,
+///         R: 5
+///     }
+/// }
+/// ```
+///
+/// If you're curious: `debug_diff` uses [`all_different`] to decide to pull a
+/// `DIFF` indicator up one level of structure.
+///
+/// [`all_different`]: fn.all_different.html
+pub fn debug_diff<T>(a: T, b: T) -> impl Debug
+    where T: Diff
+{
+    DebugDiff(a, b)
 }
 
 #[cfg(all(test, feature = "std"))]

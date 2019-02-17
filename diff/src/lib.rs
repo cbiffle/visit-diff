@@ -1,5 +1,18 @@
 //! Analyzing structural differences in Rust values using visitors.
 //!
+//! # Simple application
+//!
+//! This crate provides three functions that you can use immediately without
+//! having to learn a bunch of traits.
+//!
+//! - [`debug_diff`] enables you to print the differences between two values of
+//!   a [`Diff`] type using debug formatting.
+//!
+//! - [`any_difference`] and [`all_different`] scan values for differences and
+//!   return a `bool`.
+//!
+//! # Under the hood
+//!
 //! This scheme is modeled after a combination of `core::fmt::Formatter` and
 //! `serde::Serialize`. There are two main traits:
 //!
@@ -11,13 +24,7 @@
 //! However, you can also implement it by hand if you need special
 //! functionality.
 //!
-//! This crate provides two implementations of [`Differ`]:
-//!
-//! - [`debug`] prints differences using Rust's `Debug` format, including
-//!   optional pretty printing.
-//!
-//! - [`detect`] analyses types for differences and returns a `bool`. You can
-//!   scan for [`any_difference`] or check if two values are [`all_different`].
+//! The most detailed docs are on the [`Differ`] trait.
 //!
 //! # Visitors
 //!
@@ -49,10 +56,9 @@
 //!
 //! [`Diff`]: trait.Diff.html
 //! [`Differ`]: trait.Differ.html
-//! [`debug`]: debug/
-//! [`detect`]: detect/
-//! [`any_difference`]: detect/fn.any_difference.html
-//! [`all_different`]: detect/fn.all_different.html
+//! [`any_difference`]: fn.any_difference.html
+//! [`all_different`]: fn.all_different.html
+//! [`debug_diff`]: fn.debug_diff.html
 //! [Visitor Pattern]: https://en.wikipedia.org/wiki/Visitor_pattern
 //! [double dispatch]: https://en.wikipedia.org/wiki/Double_dispatch
 //! [`difference`]: trait.Differ.html#tymethod.difference
@@ -62,11 +68,14 @@
 #[cfg(feature = "visit_diff_derive")]
 pub use visit_diff_derive::*;
 
-pub mod debug;
-pub mod detect;
+mod debug;
+mod detect;
 
 use itertools::{EitherOrBoth, Itertools};
 use core::fmt::Debug;
+
+pub use debug::debug_diff;
+pub use detect::{any_difference, all_different};
 
 /// A type that can be compared structurally to discover differences.
 ///
@@ -83,7 +92,6 @@ use core::fmt::Debug;
 ///
 /// ```
 /// use visit_diff::{Diff, Differ};
-/// use visit_diff::detect::any_difference;
 ///
 /// #[derive(Debug)]
 /// struct MyInt(u32);
@@ -99,6 +107,8 @@ use core::fmt::Debug;
 ///         }
 ///     }
 /// }
+///
+/// use visit_diff::any_difference;
 ///
 /// assert_eq!(any_difference(&MyInt(1), &MyInt(1)), false);
 /// assert_eq!(any_difference(&MyInt(1), &MyInt(0)), true);

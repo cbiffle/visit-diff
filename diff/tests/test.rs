@@ -1,7 +1,7 @@
 #![allow(unused)]
 
-use visit_diff::debug::DebugDiff;
 use visit_diff::Diff;
+use visit_diff::debug_diff;
 
 /// structy struct
 #[derive(Diff, Debug)]
@@ -36,23 +36,23 @@ enum EnumZ {}
 #[test]
 fn debug_struct() {
     let s = TestStruct { a: true, b: () };
-    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
 }
 
 #[test]
 fn debug_enum_a() {
     let s = TestEnum::A;
-    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
 }
 
 #[test]
 fn debug_enum_b() {
     let s = TestEnum::B { unit: (), size: 12 };
-    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
 }
 
 #[test]
 fn debug_enum_c() {
     let s = TestEnum::C(true, 42);
-    assert_eq!(format!("{:?}", s), format!("{:?}", DebugDiff(&s, &s)));
+    assert_eq!(format!("{:?}", s), format!("{:?}", debug_diff(&s, &s)));
 }
