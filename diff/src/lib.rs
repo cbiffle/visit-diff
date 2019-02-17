@@ -1,17 +1,21 @@
 //! Analyzing structural differences in Rust values.
 //!
-//! This scheme is modeled after a combination of `std::fmt::Formatter` and
+//! This scheme is modeled after a combination of `core::fmt::Formatter` and
 //! `serde::Serialize`.
+
+#![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(feature = "visit_diff_derive")]
 pub use visit_diff_derive::*;
 
 pub mod debug;
 pub mod detect;
+
+#[cfg(feature = "std")]
 pub mod refl;
 
 use itertools::{EitherOrBoth, Itertools};
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 /// A type that can be compared structurally to discover differences.
 pub trait Diff: Debug {
@@ -209,6 +213,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> Diff for Box<T>
 where
     T: Diff,
@@ -221,6 +226,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> Diff for std::rc::Rc<T>
 where
     T: Diff,
@@ -233,6 +239,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<T> Diff for std::sync::Arc<T>
 where
     T: Diff,
@@ -299,8 +306,11 @@ impl_diff_partial_eq!(i64);
 impl_diff_partial_eq!(i128);
 impl_diff_partial_eq!(isize);
 impl_diff_partial_eq!(&str);
+
+#[cfg(feature = "std")]
 impl_diff_partial_eq!(String);
 
+#[cfg(feature = "std")]
 impl<V> Diff for Vec<V>
 where
     V: Diff,
@@ -313,6 +323,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<K, V> Diff for std::collections::BTreeMap<K, V>
 where
     K: Ord + Debug,
@@ -322,7 +333,7 @@ where
     where
         D: Differ,
     {
-        use std::cmp::Ordering;
+        use core::cmp::Ordering;
 
         let mut out = out.begin_map();
 
@@ -358,6 +369,7 @@ where
     }
 }
 
+#[cfg(feature = "std")]
 impl<K> Diff for std::collections::BTreeSet<K>
 where
     K: Ord + Diff,
@@ -366,7 +378,7 @@ where
     where
         D: Differ,
     {
-        use std::cmp::Ordering;
+        use core::cmp::Ordering;
 
         let mut out = out.begin_set();
 

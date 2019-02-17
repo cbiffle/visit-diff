@@ -3,16 +3,16 @@
 use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
 };
-use std::fmt::Debug;
+use core::fmt::Debug;
 
 use super::detect::all_different;
 
-/// Adapts a `std::fmt::Formatter` into a `Differ`.
-pub struct DebugDiffer<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
+/// Adapts a `core::fmt::Formatter` into a `Differ`.
+pub struct DebugDiffer<'a, 'b>(&'a mut core::fmt::Formatter<'b>);
 
 impl<'a, 'b> Differ for DebugDiffer<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     type StructDiffer = DebugStructDiff<'a, 'b>;
     type StructVariantDiffer = DebugStructDiff<'a, 'b>;
@@ -89,26 +89,26 @@ struct DIFF<T, S> {
 
 struct Missing;
 
-impl std::fmt::Debug for Missing {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl core::fmt::Debug for Missing {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("(missing)")
     }
 }
 
 pub struct DebugStructDiff<'a, 'b>(
-    Result<std::fmt::DebugStruct<'a, 'b>, std::fmt::Error>,
+    Result<core::fmt::DebugStruct<'a, 'b>, core::fmt::Error>,
 );
 
 impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     fn diff_field<T: ?Sized>(&mut self, name: &'static str, a: &T, b: &T)
     where
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.field(name, &DebugDiff(a, b) as &dyn std::fmt::Debug);
+            f.field(name, &DebugDiff(a, b) as &dyn core::fmt::Debug);
         }
     }
 
@@ -118,19 +118,19 @@ impl<'a, 'b> StructDiffer for DebugStructDiff<'a, 'b> {
 }
 
 pub struct DebugTupleDiff<'a, 'b>(
-    Result<std::fmt::DebugTuple<'a, 'b>, std::fmt::Error>,
+    Result<core::fmt::DebugTuple<'a, 'b>, core::fmt::Error>,
 );
 
 impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     fn diff_field<T: ?Sized>(&mut self, a: &T, b: &T)
     where
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.field(&DebugDiff(a, b) as &dyn std::fmt::Debug);
+            f.field(&DebugDiff(a, b) as &dyn core::fmt::Debug);
         }
     }
 
@@ -140,19 +140,19 @@ impl<'a, 'b> TupleDiffer for DebugTupleDiff<'a, 'b> {
 }
 
 pub struct DebugSeqDiff<'a, 'b>(
-    Result<std::fmt::DebugList<'a, 'b>, std::fmt::Error>,
+    Result<core::fmt::DebugList<'a, 'b>, core::fmt::Error>,
 );
 
 impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     fn diff_element<T: ?Sized>(&mut self, a: &T, b: &T)
     where
         T: Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&DebugDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&DebugDiff(a, b) as &dyn core::fmt::Debug);
         }
     }
 
@@ -180,19 +180,19 @@ impl<'a, 'b> SeqDiffer for DebugSeqDiff<'a, 'b> {
 }
 
 pub struct DebugSetDiff<'a, 'b>(
-    Result<std::fmt::DebugSet<'a, 'b>, std::fmt::Error>,
+    Result<core::fmt::DebugSet<'a, 'b>, core::fmt::Error>,
 );
 
 impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     fn diff_equal<V>(&mut self, a: &V, b: &V)
     where
         V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&DebugDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&DebugDiff(a, b) as &dyn core::fmt::Debug);
         }
     }
 
@@ -220,12 +220,12 @@ impl<'a, 'b> SetDiffer for DebugSetDiff<'a, 'b> {
 }
 
 pub struct DebugMapDiff<'a, 'b>(
-    Result<std::fmt::DebugMap<'a, 'b>, std::fmt::Error>,
+    Result<core::fmt::DebugMap<'a, 'b>, core::fmt::Error>,
 );
 
 impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
     type Ok = ();
-    type Err = std::fmt::Error;
+    type Err = core::fmt::Error;
 
     fn diff_entry<K, V>(&mut self, k: &K, a: &V, b: &V)
     where
@@ -233,7 +233,7 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
         V: ?Sized + Diff,
     {
         if let Ok(f) = &mut self.0 {
-            f.entry(&k, &DebugDiff(a, b) as &dyn std::fmt::Debug);
+            f.entry(&k, &DebugDiff(a, b) as &dyn core::fmt::Debug);
         }
     }
 
@@ -266,11 +266,11 @@ impl<'a, 'b> MapDiffer for DebugMapDiff<'a, 'b> {
 /// shows the differences between the values.
 pub struct DebugDiff<'a, T: ?Sized>(pub &'a T, pub &'a T);
 
-impl<'a, T: ?Sized> std::fmt::Debug for DebugDiff<'a, T>
+impl<'a, T: ?Sized> core::fmt::Debug for DebugDiff<'a, T>
 where
     T: Diff,
 {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         if all_different(self.0, self.1) {
             DebugDiffer(fmt).difference(&self.0, &self.1)
         } else {
@@ -279,7 +279,7 @@ where
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "std"))]
 mod tests {
     use super::*;
     use crate::tests::{TestEnum, TestStruct};

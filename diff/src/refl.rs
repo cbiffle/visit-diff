@@ -78,11 +78,11 @@ impl Reflect for () {
 
 ////////////
 
-struct DebugMirror<'a, 'b>(&'a mut std::fmt::Formatter<'b>);
+struct DebugMirror<'a, 'b>(&'a mut core::fmt::Formatter<'b>);
 
 impl<'a, 'b> Mirror for DebugMirror<'a, 'b> {
     type Ok = ();
-    type Error = std::fmt::Error;
+    type Error = core::fmt::Error;
 
     type StructMirror = DebugStructMirror<'a, 'b>;
 
@@ -117,11 +117,11 @@ impl<'a, 'b> Mirror for DebugMirror<'a, 'b> {
     }
 }
 
-struct DebugStructMirror<'a, 'b>(std::fmt::DebugStruct<'a, 'b>);
+struct DebugStructMirror<'a, 'b>(core::fmt::DebugStruct<'a, 'b>);
 
 impl<'a, 'b> StructMirror for DebugStructMirror<'a, 'b> {
     type Ok = ();
-    type Error = std::fmt::Error;
+    type Error = core::fmt::Error;
 
     fn field<T>(
         &mut self,
@@ -143,17 +143,17 @@ impl<'a, 'b> StructMirror for DebugStructMirror<'a, 'b> {
 /// Adapts any `Reflect` as `Debug`.
 struct DebugAdapter<T: ?Sized>(pub T);
 
-impl<T> std::fmt::Debug for DebugAdapter<T>
+impl<T> core::fmt::Debug for DebugAdapter<T>
 where
     T: ?Sized + Reflect,
 {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         self.0.reflect(DebugMirror(fmt))
     }
 }
 
 /// Adapts any `Reflect` as `Debug`.
-pub fn make_debug<T>(value: T) -> impl std::fmt::Debug
+pub fn make_debug<T>(value: T) -> impl core::fmt::Debug
 where
     T: Reflect,
 {
