@@ -1,12 +1,13 @@
 [package]
 name = "visit_diff_derive"
-description = "Deriving for visit_diff."
+description = "Deriving for visit_diff. Re-exported by visit_diff."
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
 workspace = ".."
 license = "BSD-2-Clause"
 repository = "https://github.com/cbiffle/visit-diff"
+readme = "README.md"
 
 [lib]
 proc-macro = true
