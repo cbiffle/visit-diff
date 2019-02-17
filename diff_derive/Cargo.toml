@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
 workspace = ".."
+license = "BSD-2-Clause"
+repository = "https://github.com/cbiffle/visit-diff"
 
 [lib]
 proc-macro = true

@@ -4,6 +4,15 @@ version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
 workspace = ".."
+license = "BSD-2-Clause"
+repository = "https://github.com/cbiffle/visit-diff"
+categories = [
+  "algorithms",
+  "data-structures",
+  "development-tools::testing",
+  "no-std",
+  "rust-patterns",
+]
 
 [dependencies]
 void = { version = "1", default-features = false }
