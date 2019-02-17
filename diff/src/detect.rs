@@ -125,11 +125,17 @@ impl From<Any> for bool {
 }
 
 #[derive(Copy, Clone, Debug)]
-struct All(bool);
+struct All {
+    all: bool,
+    any: bool,
+}
 
 impl Default for All {
     fn default() -> Self {
-        All(true)
+        All {
+            all: true,
+            any: false,
+        }
     }
 }
 
@@ -138,8 +144,9 @@ impl Accumulator for All {
     where
         T: ?Sized + Diff,
     {
-        if self.0 {
-            self.0 = any_difference(a, b);
+        if self.all {
+            self.all = any_difference(a, b);
+            self.any = true;
         }
     }
 
@@ -148,22 +155,33 @@ impl Accumulator for All {
         I: IntoIterator,
         I::Item: Diff,
     {
-        if !self.0 {
-            self.0 = left.into_iter().zip_longest(right).all(|ab| match ab {
-                EitherOrBoth::Both(a, b) => any_difference(&a, &b),
-                _ => true,
-            });
+        if self.all {
+            *self =
+                left.into_iter().zip_longest(right).fold(
+                    *self,
+                    |s, ab| match ab {
+                        EitherOrBoth::Both(a, b) => All {
+                            all: s.all && any_difference(&a, &b),
+                            any: true,
+                        },
+                        _ => All {
+                            all: false,
+                            any: true,
+                        },
+                    },
+                );
         }
     }
 
     fn diff(&mut self) {
-        // Doesn't change the result one way or another.
+        self.any = true
     }
 }
 
 impl From<All> for bool {
     fn from(x: All) -> bool {
-        x.0
+        println!("{:?}", x);
+        x.any && x.all
     }
 }
 
@@ -460,12 +478,12 @@ mod any_tests {
 }
 
 #[cfg(test)]
-mod all_tests {
+mod tests {
     use super::*;
     use crate::tests::TestStruct;
 
     #[test]
-    fn detector_self_false() {
+    fn all_self_false() {
         let a = TestStruct {
             distance: 12,
             silly: false,
@@ -474,7 +492,7 @@ mod all_tests {
     }
 
     #[test]
-    fn detector_one_field_false() {
+    fn all_one_field_false() {
         let a = TestStruct {
             distance: 12,
             silly: false,
@@ -484,7 +502,7 @@ mod all_tests {
     }
 
     #[test]
-    fn detector_both_fields_true() {
+    fn all_both_fields_true() {
         let a = TestStruct {
             distance: 12,
             silly: false,
@@ -494,5 +512,24 @@ mod all_tests {
             silly: true,
         };
         assert!(all_different(&a, &b))
+    }
+
+    #[test]
+    fn empty_slice() {
+        let s: &[u32] = &[];
+        assert!(
+            !all_different(&s, &s),
+            "empty slices should all be the same."
+        );
+        assert!(
+            !any_difference(&s, &s),
+            "empty slices should all be the same."
+        );
+    }
+
+    #[test]
+    fn unit() {
+        assert!(!all_different(&(), &()), "units should all be the same.");
+        assert!(!any_difference(&(), &()), "units should all be the same.");
     }
 }
