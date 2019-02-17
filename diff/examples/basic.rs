@@ -1,8 +1,8 @@
-//! Uses the `diffwalk::debug` module to print differences between two data
+//! Uses the `visit_diff::debug` module to print differences between two data
 //! structures in `Debug` format.
 
-use diffwalk::debug::DebugDiff;
-use diffwalk::Diff;
+use visit_diff::debug::DebugDiff;
+use visit_diff::Diff;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Arbitrary example data structure.

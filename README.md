@@ -1,4 +1,4 @@
-# `diffwalk`: analyzing structural differences in Rust
+# `visit_diff`: analyzing structural differences in Rust
 
 This is a library for easily comparing Rust data structures to detect
 differences. This is useful, for example, when reporting a test failure.

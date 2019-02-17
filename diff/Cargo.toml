@@ -1,5 +1,5 @@
 [package]
-name = "diffwalk"
+name = "visit_diff"
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
@@ -8,5 +8,5 @@ workspace = ".."
 [dependencies]
 void = "1"
 serde = "1.0.87"
-diffwalk_derive = { path = "../diff_derive" }
+visit_diff_derive = { path = "../diff_derive" }
 itertools = "0.8.0"

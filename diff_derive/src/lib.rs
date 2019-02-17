@@ -21,11 +21,11 @@ pub fn diff_derive(input: TokenStream) -> TokenStream {
     let dispatch = gen_dispatch(&name, &input.data);
 
     let expanded = quote_spanned! {name.span()=>
-        impl #impl_generics ::diffwalk::Diff for #name #ty_generics
+        impl #impl_generics ::visit_diff::Diff for #name #ty_generics
         #where_clause {
             fn diff<D>(a: &Self, b: &Self, out: D)
                 -> ::std::result::Result<D::Ok, D::Err>
-            where D: ::diffwalk::Differ
+            where D: ::visit_diff::Differ
             {
                 #dispatch
             }
@@ -41,7 +41,7 @@ pub fn diff_derive(input: TokenStream) -> TokenStream {
 fn add_trait_bounds(mut generics: syn::Generics) -> syn::Generics {
     for param in &mut generics.params {
         if let syn::GenericParam::Type(type_param) = param {
-            type_param.bounds.push(syn::parse_quote!(::diffwalk::Diff));
+            type_param.bounds.push(syn::parse_quote!(::visit_diff::Diff));
         }
     }
     generics
@@ -148,7 +148,7 @@ fn gen_named_variant(
     //
     //   ( Ty::Var { f: f_a, v: v_a },
     //     Ty::Var { f: f_b, v: v_b } ) => {
-    //       use ::diffwalk::StructDiffer;
+    //       use ::visit_diff::StructDiffer;
     //       let mut s = out.begin_struct("Ty");
     //       s.diff_field("f", f_a, f_b);
     //       s.diff_field("v", v_a, v_b);
@@ -172,7 +172,7 @@ fn gen_named_struct_impl(
     stmts: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     quote_spanned! {ty.span()=>
-        use ::diffwalk::StructDiffer;
+        use ::visit_diff::StructDiffer;
         let mut s = out.begin_struct(stringify!(#ty));
         #stmts
         s.end()
@@ -217,7 +217,7 @@ fn gen_unnamed_variant(
     // Generated match arm will resemble:
     //   ( Ty::Var(a0, a1),
     //     Ty::Var(b0, b1) ) => {
-    //       use ::diffwalk::TupletDiffer;
+    //       use ::visit_diff::TupletDiffer;
     //       let mut s = out.begin_tuple("Ty");
     //       s.diff_field(f_a, f_b);
     //       s.diff_field(v_a, v_b);
@@ -241,7 +241,7 @@ fn gen_unnamed_impl(
     stmts: proc_macro2::TokenStream,
 ) -> proc_macro2::TokenStream {
     quote_spanned! {ty.span()=>
-        use ::diffwalk::TupleDiffer;
+        use ::visit_diff::TupleDiffer;
         let mut s = out.begin_tuple(stringify!(#ty));
         #stmts
         s.end()

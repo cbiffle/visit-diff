@@ -1,5 +1,5 @@
 [package]
-name = "diffwalk_derive"
+name = "visit_diff_derive"
 version = "0.1.0"
 authors = ["Cliff L. Biffle <code@cliffle.com>"]
 edition = "2018"
