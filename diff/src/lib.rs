@@ -11,9 +11,6 @@ pub use visit_diff_derive::*;
 pub mod debug;
 pub mod detect;
 
-#[cfg(feature = "std")]
-pub mod refl;
-
 use itertools::{EitherOrBoth, Itertools};
 use core::fmt::Debug;
 
