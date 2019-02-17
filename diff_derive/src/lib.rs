@@ -130,7 +130,12 @@ fn gen_named_struct(
     });
     let stmts = proc_macro2::TokenStream::from_iter(stmts);
 
-    gen_named_struct_impl(ty, stmts)
+    quote_spanned! {ty.span()=>
+        use ::visit_diff::StructDiffer;
+        let mut s = out.begin_struct(stringify!(#ty));
+        #stmts
+        s.end()
+    }
 }
 
 /// Generates dispatcher for a named enum variant.
@@ -151,7 +156,7 @@ fn gen_named_variant(
     //   ( Ty::Var { f: f_a, v: v_a },
     //     Ty::Var { f: f_b, v: v_b } ) => {
     //       use ::visit_diff::StructDiffer;
-    //       let mut s = out.begin_struct("Ty");
+    //       let mut s = out.begin_struct_variant("Ty", "Var");
     //       s.diff_field("f", f_a, f_b);
     //       s.diff_field("v", v_a, v_b);
     //       s.end()
@@ -159,25 +164,17 @@ fn gen_named_variant(
     let a_pat = named_fields_pattern(fields.named.iter(), "_a");
     let b_pat = named_fields_pattern(fields.named.iter(), "_b");
     let stmts = diff_named_fields(fields.named.iter(), "_a", "_b");
-    let walk = gen_named_struct_impl(name, stmts);
     quote_spanned! {name.span()=>
         ( #ty::#name { #a_pat },
           #ty::#name { #b_pat }) => {
-            #walk
+            use ::visit_diff::StructDiffer;
+            let mut s = out.begin_struct_variant(
+                stringify!(#ty),
+                stringify!(#name),
+            );
+            #stmts
+            s.end()
         },
-    }
-}
-
-/// Common struct field walking code.
-fn gen_named_struct_impl(
-    ty: &syn::Ident,
-    stmts: proc_macro2::TokenStream,
-) -> proc_macro2::TokenStream {
-    quote_spanned! {ty.span()=>
-        use ::visit_diff::StructDiffer;
-        let mut s = out.begin_struct(stringify!(#ty));
-        #stmts
-        s.end()
     }
 }
 
@@ -202,7 +199,12 @@ fn gen_unnamed_struct(
         }
     });
     let stmts = proc_macro2::TokenStream::from_iter(stmts);
-    gen_unnamed_impl(ty, stmts)
+    quote_spanned! {ty.span()=>
+        use ::visit_diff::TupleDiffer;
+        let mut s = out.begin_tuple(stringify!(#ty));
+        #stmts
+        s.end()
+    }
 }
 
 /// Generates dispatcher for an enum variant with unnamed fields (i.e. a tuple
@@ -228,25 +230,16 @@ fn gen_unnamed_variant(
     let a_pat = unnamed_fields_pattern(fields.unnamed.iter(), "a");
     let b_pat = unnamed_fields_pattern(fields.unnamed.iter(), "b");
     let stmts = diff_unnamed_fields(fields.unnamed.iter(), "a", "b");
-    let walk = gen_unnamed_impl(name, stmts);
-
     quote_spanned! {name.span()=>
         (#ty::#name(#a_pat), #ty::#name(#b_pat)) => {
-            #walk
+            use ::visit_diff::TupleDiffer;
+            let mut s = out.begin_tuple_variant(
+                stringify!(#ty),
+                stringify!(#name),
+            );
+            #stmts
+            s.end()
         },
-    }
-}
-
-/// Common unnamed field walking code.
-fn gen_unnamed_impl(
-    ty: &syn::Ident,
-    stmts: proc_macro2::TokenStream,
-) -> proc_macro2::TokenStream {
-    quote_spanned! {ty.span()=>
-        use ::visit_diff::TupleDiffer;
-        let mut s = out.begin_tuple(stringify!(#ty));
-        #stmts
-        s.end()
     }
 }
 
