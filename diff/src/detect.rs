@@ -1,7 +1,7 @@
+use itertools::{EitherOrBoth, Itertools};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use void::{ResultVoidExt, Void};
-use itertools::{Itertools, EitherOrBoth};
 
 use crate::{
     Diff, Differ, MapDiffer, SeqDiffer, SetDiffer, StructDiffer, TupleDiffer,
@@ -40,7 +40,7 @@ struct Any(bool);
 impl Accumulator for Any {
     fn consider<T>(&mut self, a: &T, b: &T)
     where
-        T: ?Sized + Diff
+        T: ?Sized + Diff,
     {
         if !self.0 {
             self.0 = any_difference(a, b);
@@ -50,14 +50,13 @@ impl Accumulator for Any {
     fn consider_all<I>(&mut self, left: I, right: I)
     where
         I: IntoIterator,
-        I::Item: Diff
+        I::Item: Diff,
     {
         if !self.0 {
-            self.0 = left.into_iter().zip_longest(right)
-                .any(|ab| match ab {
-                    EitherOrBoth::Both(a, b) => any_difference(&a, &b),
-                    _ => true,
-                });
+            self.0 = left.into_iter().zip_longest(right).any(|ab| match ab {
+                EitherOrBoth::Both(a, b) => any_difference(&a, &b),
+                _ => true,
+            });
         }
     }
 
@@ -84,7 +83,7 @@ impl Default for All {
 impl Accumulator for All {
     fn consider<T>(&mut self, a: &T, b: &T)
     where
-        T: ?Sized + Diff
+        T: ?Sized + Diff,
     {
         if self.0 {
             self.0 = any_difference(a, b);
@@ -94,14 +93,13 @@ impl Accumulator for All {
     fn consider_all<I>(&mut self, left: I, right: I)
     where
         I: IntoIterator,
-        I::Item: Diff
+        I::Item: Diff,
     {
         if !self.0 {
-            self.0 = left.into_iter().zip_longest(right)
-                .all(|ab| match ab {
-                    EitherOrBoth::Both(a, b) => any_difference(&a, &b),
-                    _ => true,
-                });
+            self.0 = left.into_iter().zip_longest(right).all(|ab| match ab {
+                EitherOrBoth::Both(a, b) => any_difference(&a, &b),
+                _ => true,
+            });
         }
     }
 
@@ -388,14 +386,8 @@ mod any_tests {
 
     #[test]
     fn detector_enum() {
-        assert_eq!(
-            any_difference(&TestEnum::First, &TestEnum::First),
-            false
-        );
-        assert_eq!(
-            any_difference(&TestEnum::Second, &TestEnum::Second),
-            false
-        );
+        assert_eq!(any_difference(&TestEnum::First, &TestEnum::First), false);
+        assert_eq!(any_difference(&TestEnum::Second, &TestEnum::Second), false);
 
         assert!(any_difference(&TestEnum::First, &TestEnum::Second));
         assert!(any_difference(&TestEnum::Second, &TestEnum::First));

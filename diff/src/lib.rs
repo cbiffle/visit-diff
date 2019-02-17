@@ -9,8 +9,8 @@ pub mod debug;
 pub mod detect;
 pub mod refl;
 
+use itertools::{EitherOrBoth, Itertools};
 use std::fmt::Debug;
-use itertools::{Itertools, EitherOrBoth};
 
 /// A type that can be compared structurally to discover differences.
 pub trait Diff: Debug {

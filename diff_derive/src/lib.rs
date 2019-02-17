@@ -41,7 +41,9 @@ pub fn diff_derive(input: TokenStream) -> TokenStream {
 fn add_trait_bounds(mut generics: syn::Generics) -> syn::Generics {
     for param in &mut generics.params {
         if let syn::GenericParam::Type(type_param) = param {
-            type_param.bounds.push(syn::parse_quote!(::visit_diff::Diff));
+            type_param
+                .bounds
+                .push(syn::parse_quote!(::visit_diff::Diff));
         }
     }
     generics
