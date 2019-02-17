@@ -1,5 +1,7 @@
 # `visit_diff`: analyzing structural differences in Rust
 
+[![Build Status](https://travis-ci.com/cbiffle/visit-diff.svg?branch=master)](https://travis-ci.com/cbiffle/visit-diff)
+
 This is a library for easily comparing Rust data structures to detect
 differences. This is useful, for example, when reporting a test failure.
 
