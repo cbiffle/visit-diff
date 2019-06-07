@@ -469,9 +469,9 @@ mod tests {
 TestStruct {
     distance: DIFF {
         L: 12,
-        R: 10
+        R: 10,
     },
-    silly: false
+    silly: false,
 }";
 
         let diff = format!("{:#?}", DebugDiff(&a, &b));
