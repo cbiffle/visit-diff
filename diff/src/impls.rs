@@ -376,6 +376,7 @@ impl<T: Diff, E: Diff> Diff for core::result::Result<T, E> {
 mod tests {
     use super::*;
 
+    #[allow(unused)]
     #[derive(Clone, Debug)]
     pub enum TestEnum {
         First,
