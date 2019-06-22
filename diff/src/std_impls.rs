@@ -111,8 +111,6 @@ where
     where
         D: Differ,
     {
-        use itertools::{EitherOrBoth, Itertools};
-
         let mut out = out.begin_map();
 
         for ab in a.iter().merge_join_by(b, |(i, _), (j, _)| i.cmp(j)) {
@@ -164,8 +162,6 @@ where
     where
         D: Differ,
     {
-        use itertools::{EitherOrBoth, Itertools};
-
         let mut out = out.begin_set();
 
         for ab in a.iter().merge_join_by(b, |i, j| i.cmp(j)) {

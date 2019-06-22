@@ -377,7 +377,7 @@ difference:
         }
     });
     ($left:expr, $right:expr,) => ({
-        assert_eq!($left, $right)
+        assert_eq_diff!($left, $right)
     });
     ($left:expr, $right:expr, $($arg:tt)+) => ({
         match (&($left), &($right)) {
@@ -388,7 +388,7 @@ difference:
 difference:
 {:#?}"#,
                             format_args!($($arg)+),
-                            left_val, right_val)
+                            $crate::debug_diff(left_val, right_val))
                 }
             }
         }
@@ -469,9 +469,9 @@ mod tests {
 TestStruct {
     distance: DIFF {
         L: 12,
-        R: 10
+        R: 10,
     },
-    silly: false
+    silly: false,
 }";
 
         let diff = format!("{:#?}", DebugDiff(&a, &b));
